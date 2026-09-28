@@ -24,5 +24,10 @@ service = "zibuke-community"
 binding = "NEXT_INC_CACHE_R2_BUCKET"
 bucket_name = "zibuke-community-opennext-cache"
 
+# Run `wrangler r2 bucket create zibuke-media` before deploying.
+[[r2_buckets]]
+binding = "ZIBUKE_BUCKET"
+bucket_name = "zibuke-media"
+
 [images]
 binding = "IMAGES"

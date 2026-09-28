@@ -11,3 +11,10 @@
 n` script) rather than checking them in. Confidence: 0.7
 - When tooling is slow due to environment/disk I/O (e.g. synced folders), prefers applying the concrete config-level speedup (like adding `--cache` to the lint script) instead of only leaving it as a diagnosed problem. Confidence: 0.5
 - Wants seed/mock data to be realistic and representative (e.g., actual names, plausible roles, JSON skill arrays) rather than placeholder/lorem content. Confidence: 0.5
+- Likes checkpointing working state with a git commit (`git add .` + `git commit`) at milestones before adding new features, using conventional-commit-style messages (e.g. `feat: ...`). Confidence: 0.5
+- Wants seeded mock data to be referentially consistent — new rows should reference the existing seeded records' UUIDs/foreign keys so joins resolve, rather than inventing standalone IDs. Confidence: 0.55
+- Writes design/styling requests as precise, implementation-level specs — names the exact files to touch, specific Tailwind utility classes (`rounded-full`, `shadow-sm`, `hover:bg-gray-100`), and concrete hex colors — while leaving small choices open (e.g. "blue-600 or #0866FF", "slate-100 or gray-100") for the agent to decide. Confidence: 0.55
+- Reaches for Auth.js (NextAuth v5, `next-auth@beta`) with the `@auth/drizzle-adapter` for authentication, wiring up the standard adapter tables (accounts/sessions/verificationTokens) plus social providers and an email provider. Confidence: 0.5
+- Prefers wiring interactivity and mutations through Next.js Server Actions (collected in `app/actions.ts`, using `revalidatePath`), rather than API routes or client-side fetch. Confidence: 0.5
+- Recurringly wants a "Facebook-style" social UI — feed composer, Like/Reply ghost buttons, profile/cover photos, a create-group modal with Privacy/Visibility radios, pill-shaped search. Confidence: 0.55
+- Prefers comprehensive, feature-complete implementations that "capture maximum" data — e.g. multi-step onboarding forms and richly expanded schemas — over minimal stubs. Confidence: 0.45

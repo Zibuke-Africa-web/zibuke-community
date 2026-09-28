@@ -28,8 +28,8 @@ const iconStyle: Record<NavVariant, string> = {
 };
 
 const ringOffsetStyle: Record<NavVariant, string> = {
-  sidebar: "focus-visible:ring-offset-stone-100",
-  tabs: "focus-visible:ring-offset-stone-50",
+  sidebar: "focus-visible:ring-offset-gray-100",
+  tabs: "focus-visible:ring-offset-white",
 };
 
 export function PlatformNav({ variant }: { variant: NavVariant }) {
@@ -47,14 +47,14 @@ export function PlatformNav({ variant }: { variant: NavVariant }) {
               aria-current={isActive ? "page" : undefined}
               className={`flex min-h-11 items-center text-sm whitespace-nowrap transition-colors ${linkStyle[variant]} ${
                 isActive
-                  ? "bg-white font-semibold text-stone-900 ring-1 ring-stone-200"
-                  : "font-medium text-stone-700 hover:bg-white/70 hover:text-stone-900"
+                  ? "bg-brand-600/10 font-semibold text-brand-700"
+                  : "font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
               } focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${ringOffsetStyle[variant]}`}
             >
               <Icon
                 aria-hidden="true"
                 className={`${iconStyle[variant]} ${
-                  isActive ? "text-brand-700" : "text-stone-500"
+                  isActive ? "text-brand-600" : "text-gray-500"
                 }`}
               />
               {label}
