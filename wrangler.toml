@@ -1,0 +1,28 @@
+name = "zibuke-community"
+main = ".open-next/worker.js"
+compatibility_date = "2026-09-28"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Run `wrangler d1 create zibuke-db` and paste the returned id below.
+# Local commands work with this placeholder; deploy does not.
+[[d1_databases]]
+binding = "DB"
+database_name = "zibuke-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "drizzle"
+
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "zibuke-community"
+
+# Run `wrangler r2 bucket create zibuke-community-opennext-cache` before deploying.
+[[r2_buckets]]
+binding = "NEXT_INC_CACHE_R2_BUCKET"
+bucket_name = "zibuke-community-opennext-cache"
+
+[images]
+binding = "IMAGES"
