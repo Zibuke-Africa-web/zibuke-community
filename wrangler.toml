@@ -7,12 +7,12 @@ compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
-# Run `wrangler d1 create zibuke-db` and paste the returned id below.
-# Local commands work with this placeholder; deploy does not.
+# Production database.
+
 [[d1_databases]]
 binding = "DB"
 database_name = "zibuke-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "235027b8-9218-4cec-85c2-3a9424234e66"
 migrations_dir = "drizzle"
 
 [[services]]

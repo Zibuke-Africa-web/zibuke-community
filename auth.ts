@@ -22,6 +22,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
       sessionsTable: sessions,
       verificationTokensTable: verificationTokens,
     }),
+    callbacks: {
+      session({ session, user }) {
+        session.user.id = user.id;
+        return session;
+      },
+    },
     providers: [
       Google({
         clientId: env.AUTH_GOOGLE_ID,

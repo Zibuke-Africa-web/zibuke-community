@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --cache",
-    "typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy:cloudflare": "opennextjs-cloudflare deploy",
+    "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "db:migrate:remote": "wrangler d1 migrations apply zibuke-db --remote"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

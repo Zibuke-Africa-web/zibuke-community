@@ -1,34 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zibuke Community
 
-## Getting Started
+Next.js application deployed to Cloudflare Workers using OpenNext. The Worker serves both the application pages and server routes; no separate Cloudflare Pages project is required.
 
-First, run the development server:
+## Production resources
 
-```bash
+- Worker: `zibuke-community`
+- D1 database: `zibuke-db` (binding `DB`)
+- R2 cache: `zibuke-community-opennext-cache`
+- R2 uploads: `zibuke-media` (binding `ZIBUKE_BUCKET`)
+- Intended domain: `zibukecommunity.co.za`
+
+## Local development
+
+```sh
+npm ci
+npm run typegen
+npx wrangler d1 migrations apply zibuke-db --local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Keep local credentials in the ignored `.dev.vars` file. Never commit credentials.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Cloudflare deployment
 
-## Learn More
+```sh
+npm ci
+npm run typegen
+npm run build:cloudflare
+npm run db:migrate:remote
+npm run deploy:cloudflare
+```
 
-To learn more about Next.js, take a look at the following resources:
+For Cloudflare Workers Builds, connect `Zibuke-Africa-web/zibuke-community`, branch `main`, with root `/`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Build command: `npm run typegen && npm run build:cloudflare`
+- Deploy command: `npm run db:migrate:remote && npm run deploy:cloudflare`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Use Linux for automated builds. OpenNext has limited Windows support.
 
-## Deploy on Vercel
+Set `AUTH_SECRET` as a Worker secret. For Facebook login also set `AUTH_FACEBOOK_ID` and `AUTH_FACEBOOK_SECRET` using the Cloudflare dashboard or `wrangler secret put`. Configure this valid OAuth redirect URI in the Meta app:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`https://zibukecommunity.co.za/api/auth/callback/facebook`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Facebook credentials in the local development file are placeholders. A real Meta app and its production login configuration are required for public sign-in. Other providers similarly require their corresponding secrets from `env.d.ts`.
+
+Add `zibukecommunity.co.za` as the Worker's Custom Domain once the Cloudflare zone is active. Its assigned nameservers are `corey.ns.cloudflare.com` and `harleigh.ns.cloudflare.com`.
+
+The production database starts empty; demo seed files are not applied automatically. Admin access requires a signed-in user whose database role is `admin`.
