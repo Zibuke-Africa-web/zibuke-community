@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { updateProfile, uploadMedia } from "@/app/actions";
+import { ImageCropper } from "./image-cropper";
 
 const steps = ["About you", "Photos", "Links"] as const;
 
@@ -24,10 +25,14 @@ type PhotoKind = "profile" | "cover";
 
 export function ProfileSetupForm() {
   const [step, setStep] = useState(0);
-  const [profileKey, setProfileKey] = useState("");
-  const [coverKey, setCoverKey] = useState("");
+  const [profileUrl, setProfileUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
   const [profilePreview, setProfilePreview] = useState("");
   const [coverPreview, setCoverPreview] = useState("");
+  const [pending, setPending] = useState<{
+    kind: PhotoKind;
+    source: string;
+  } | null>(null);
   const [uploading, setUploading] = useState<PhotoKind | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{
@@ -37,26 +42,49 @@ export function ProfileSetupForm() {
   const profileInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
 
-  async function handleUpload(
+  function handleFileSelected(
     kind: PhotoKind,
     input: HTMLInputElement,
     file: File | undefined,
   ) {
-    if (!file) {
+    input.value = "";
+    setStatus(null);
+
+    if (file) {
+      setPending({ kind, source: URL.createObjectURL(file) });
+    }
+  }
+
+  function handleCancelCrop() {
+    if (pending) {
+      URL.revokeObjectURL(pending.source);
+    }
+
+    setPending(null);
+  }
+
+  async function handleCropped(blob: Blob) {
+    if (!pending) {
       return;
     }
 
+    const { kind, source } = pending;
+    URL.revokeObjectURL(source);
+    setPending(null);
     setUploading(kind);
-    setStatus(null);
 
     const formData = new FormData();
-    formData.set("file", file);
+    formData.append(
+      "file",
+      blob,
+      kind === "profile" ? "profile.jpg" : "cover.jpg",
+    );
+
     const result = await uploadMedia(formData);
 
-    input.value = "";
     setUploading(null);
 
-    if (!result.ok || !result.key) {
+    if (!result.ok || !result.url) {
       setStatus({
         tone: "error",
         text: result.error ?? "That upload did not go through.",
@@ -64,21 +92,23 @@ export function ProfileSetupForm() {
       return;
     }
 
+    const preview = URL.createObjectURL(blob);
+
     if (kind === "profile") {
-      setProfileKey(result.key);
+      setProfileUrl(result.url);
       setProfilePreview((previous) => {
         if (previous) {
           URL.revokeObjectURL(previous);
         }
-        return URL.createObjectURL(file);
+        return preview;
       });
     } else {
-      setCoverKey(result.key);
+      setCoverUrl(result.url);
       setCoverPreview((previous) => {
         if (previous) {
           URL.revokeObjectURL(previous);
         }
-        return URL.createObjectURL(file);
+        return preview;
       });
     }
 
@@ -105,8 +135,8 @@ export function ProfileSetupForm() {
       onSubmit={handleSubmit}
       className="flex flex-col gap-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
     >
-      <input type="hidden" name="profilePictureUrl" value={profileKey} />
-      <input type="hidden" name="coverPhotoUrl" value={coverKey} />
+      <input type="hidden" name="profilePictureUrl" value={profileUrl} />
+      <input type="hidden" name="coverPhotoUrl" value={coverUrl} />
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between text-sm">
@@ -240,7 +270,7 @@ export function ProfileSetupForm() {
                 ) : (
                   <Camera aria-hidden="true" className="size-4" />
                 )}
-                {profileKey ? "Replace photo" : "Add photo"}
+                {profileUrl ? "Replace photo" : "Add photo"}
               </button>
             </div>
           </div>
@@ -251,7 +281,11 @@ export function ProfileSetupForm() {
             accept="image/*"
             className="hidden"
             onChange={(event) =>
-              handleUpload("cover", event.currentTarget, event.target.files?.[0])
+              handleFileSelected(
+                "cover",
+                event.currentTarget,
+                event.target.files?.[0],
+              )
             }
           />
           <input
@@ -260,7 +294,7 @@ export function ProfileSetupForm() {
             accept="image/*"
             className="hidden"
             onChange={(event) =>
-              handleUpload(
+              handleFileSelected(
                 "profile",
                 event.currentTarget,
                 event.target.files?.[0],
@@ -354,6 +388,14 @@ export function ProfileSetupForm() {
           </button>
         )}
       </div>
+
+      {pending ? (
+        <ImageCropper
+          source={pending.source}
+          onCancel={handleCancelCrop}
+          onConfirm={handleCropped}
+        />
+      ) : null}
     </form>
   );
 }

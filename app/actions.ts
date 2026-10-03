@@ -11,11 +11,18 @@ export type ActionResult = {
   ok: boolean;
   error?: string;
   key?: string;
+  url?: string;
   simulated?: boolean;
 };
 
 const SIMULATED_DELAY_MS = 300;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -105,15 +112,16 @@ export async function uploadMedia(
     return { ok: false, error: "Choose an image to upload." };
   }
 
-  if (!file.type.startsWith("image/")) {
-    return { ok: false, error: "Only image files can be uploaded." };
+  const extension = IMAGE_EXTENSIONS[file.type];
+
+  if (!extension) {
+    return { ok: false, error: "Uploads must be a JPEG, PNG, or WebP image." };
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
     return { ok: false, error: "Images must be 5 MB or smaller." };
   }
 
-  const extension = file.type.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "bin";
   const key = `uploads/${crypto.randomUUID()}.${extension}`;
 
   const { env } = await getCloudflareContext({ async: true });
@@ -124,7 +132,7 @@ export async function uploadMedia(
   revalidatePath("/messages");
   revalidatePath("/profile/setup");
 
-  return { ok: true, key };
+  return { ok: true, key, url: `/media/${key}` };
 }
 
 export async function createGroup(
