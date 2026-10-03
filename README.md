@@ -47,3 +47,11 @@ Facebook credentials in the local development file are placeholders. A real Meta
 Add `zibukecommunity.co.za` as the Worker's Custom Domain once the Cloudflare zone is active. Its assigned nameservers are `corey.ns.cloudflare.com` and `harleigh.ns.cloudflare.com`.
 
 The production database starts empty; demo seed files are not applied automatically. Admin access requires a signed-in user whose database role is `admin`.
+
+## GitHub Actions automatic deployment
+
+`.github/workflows/deploy.yml` builds and deploys the Worker on pushes to `main`, and supports manual runs from the Actions tab. It installs the locked dependencies, generates types, runs lint, builds OpenNext, applies D1 migrations, and deploys the Worker.
+
+Add a repository Actions secret named `CLOUDFLARE_API_TOKEN`, scoped to the production Cloudflare account, with Workers Scripts Edit, D1 Edit, and Workers R2 Storage Write permissions. The account ID is already set in the workflow. Runtime Facebook credentials and `AUTH_SECRET` stay in the existing Worker's secrets.
+
+Use either this GitHub Actions workflow or Cloudflare Workers Builds as the deployment trigger to avoid deploying every commit twice.
