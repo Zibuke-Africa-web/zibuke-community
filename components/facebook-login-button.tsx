@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { loginDestination } from "@/lib/login-redirect";
 
-export function FacebookLoginButton() {
+export function FacebookLoginButton({ callbackUrl = "/feed" }: { callbackUrl?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -11,7 +12,7 @@ export function FacebookLoginButton() {
     setPending(true);
     setError(null);
     try {
-      await signIn('facebook', { callbackUrl: '/feed' });
+      await signIn("facebook", { callbackUrl: loginDestination(callbackUrl) });
     } catch {
       setError("Facebook sign-in could not start. Please try again.");
       setPending(false);
