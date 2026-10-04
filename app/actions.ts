@@ -72,6 +72,7 @@ export async function updateProfile(
 }
 
 export async function joinGroup(groupId: string): Promise<void> {
+  if (!(await auth())?.user?.id) throw new Error("Sign in before joining a group.");
   await wait(SIMULATED_DELAY_MS);
 
   const db = await getDb();
@@ -88,6 +89,7 @@ export async function joinGroup(groupId: string): Promise<void> {
 }
 
 export async function likePost(postId: string): Promise<void> {
+  if (!(await auth())?.user?.id) throw new Error("Sign in before liking a post.");
   await wait(SIMULATED_DELAY_MS);
 
   const db = await getDb();
@@ -106,6 +108,7 @@ export async function likePost(postId: string): Promise<void> {
 export async function uploadMedia(
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!(await auth())?.user?.id) return { ok: false, error: "Sign in before uploading media." };
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -138,6 +141,7 @@ export async function uploadMedia(
 export async function createGroup(
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!(await auth())?.user?.id) return { ok: false, error: "Sign in before creating a group." };
   const name = text(formData, "name");
 
   if (!name || name.length < 3) {
