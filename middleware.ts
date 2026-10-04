@@ -1,20 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
 
-// 1. Define the Auth.js logic as a separate variable
-const authMiddleware = auth((req) => {
-  if (!req.auth?.user?.id) {
-    const login = new URL("/login", req.nextUrl.origin);
-    login.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
+export async function middleware(request: NextRequest) {
+  // Call auth() directly to get the session inside a standard function
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    const login = new URL("/login", request.nextUrl.origin);
+    login.searchParams.set("callbackUrl", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(login);
   }
+  
   return NextResponse.next();
-});
-
-// 2. Export an EXPLICIT function to satisfy OpenNext's strict parser
-export default async function middleware(req: NextRequest) {
-  // @ts-expect-error
-  return authMiddleware(req);
 }
 
 export const config = {
