@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-// Keep the Edge middleware convention for the Cloudflare OpenNext deployment.
+// Explicitly export as `middleware` instead of `default` to satisfy OpenNext routing.
 // Auth.js validates the opaque session token against D1, including expiry.
-export default auth((request) => {
+export const middleware = auth((request) => {
   if (!request.auth?.user?.id) {
     const login = new URL("/login", request.nextUrl.origin);
     login.searchParams.set("callbackUrl", request.nextUrl.pathname + request.nextUrl.search);
