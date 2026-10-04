@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
   integer,
+  check,
+  index,
+  uniqueIndex,
   primaryKey,
   sqliteTable,
   text,
@@ -28,7 +31,37 @@ export const users = sqliteTable("users", {
   tiktokUrl: text("tiktok_url"),
   website: text("website"),
   coverPhotoUrl: text("cover_photo_url"),
+  websiteUrl: text("website_url"),
+  employmentStatus: text("employment_status"),
+  profilePhotoUrl: text("profile_photo_url"),
+  socialLinks: text("social_links", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull()
+    .default({}),
 });
+
+// One friendship per unordered pair; requester/addressee preserve its direction.
+export const connections = sqliteTable(
+  "connections",
+  {
+    requesterId: text("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    addresseeId: text("addressee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["pending", "accepted", "blocked"] }).notNull().default("pending"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    // Drizzle initializes/refreshes this on writes; raw SQL must set it explicitly.
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.requesterId, table.addresseeId] }),
+    check("connections_no_self", sql`${table.requesterId} <> ${table.addresseeId}`),
+    check("connections_valid_status", sql`${table.status} in ('pending', 'accepted', 'blocked')`),
+    uniqueIndex("connections_pair_unique").on(
+      sql`min(${table.requesterId}, ${table.addresseeId})`,
+      sql`max(${table.requesterId}, ${table.addresseeId})`,
+    ),
+    index("connections_incoming_status_idx").on(table.addresseeId, table.status),
+  ],
+);
 
 export const accounts = sqliteTable(
   "accounts",
@@ -91,7 +124,9 @@ export const posts = sqliteTable("posts", {
     onDelete: "set null",
   }),
   content: text("content").notNull(),
+  mediaUrl: text("media_url"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(() => new Date()),
 });

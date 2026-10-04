@@ -28,7 +28,8 @@ export default defineConfig({
   dialect: "sqlite",
   schema: "./db/schema.ts",
   out: "./drizzle",
-  dbCredentials: {
-    url: resolveLocalD1File(),
-  },
+  // Generating SQL does not require an initialized local database.
+  ...(process.argv.includes("generate") ? {} : {
+    dbCredentials: { url: resolveLocalD1File() },
+  }),
 });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Compass } from "lucide-react";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
@@ -66,7 +67,7 @@ export default async function DirectoryPage() {
                   </span>
                   <div className="min-w-0">
                     <h2 className="truncate text-sm font-semibold text-gray-900">
-                      {member.name}
+                      <Link href={`/profile/${encodeURIComponent(member.id)}`} className="hover:text-brand-700 hover:underline">{member.name}</Link>
                     </h2>
                     <p className="truncate text-xs text-gray-500">
                       {member.role}

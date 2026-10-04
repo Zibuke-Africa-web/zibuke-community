@@ -48,6 +48,70 @@ Add `zibukecommunity.co.za` as the Worker's Custom Domain once the Cloudflare zo
 
 The production database starts empty; demo seed files are not applied automatically. Admin access requires a signed-in user whose database role is `admin`.
 
+## Social graph migration and Facebook login
+
+The profile extensions, friendship requests, and post media are defined in
+`db/schema.ts`. Existing profile fields remain compatible with the current UI.
+`socialLinks` stores a JSON object mapping platform names to URLs. A connection
+keeps its requester/addressee direction and permits only one row per unordered
+user pair, with `pending`, `accepted`, or `blocked` status. Both user foreign keys
+cascade on deletion. Query both directions to find a user's accepted friends.
+
+`createdAt` uses Unix seconds. Drizzle sets `updatedAt` on inserts and updates;
+older posts have a null `updatedAt`. Raw SQL updates must set it explicitly.
+`mediaUrl` stores the URL for an uploaded R2 asset; uploading remains a separate operation.
+
+Migration `drizzle/0002_social_graph.sql` is already generated. Apply it with:
+
+```sh
+npx wrangler d1 migrations apply zibuke-db --local
+npx wrangler d1 migrations apply zibuke-db --remote
+```
+
+For future schema changes, generate SQL before applying it:
+
+```sh
+npx drizzle-kit generate --name social_graph
+```
+
+Wrangler has no `d1 migrations generate` command. Its `migrations create`
+command creates an empty SQL file; use Drizzle generation for this project.
+
+Import `{ FacebookLoginButton }` from `@/components/facebook-login-button`.
+It calls `signIn('facebook', { callbackUrl: '/feed' })` and includes pending and
+error states. The Facebook provider is already configured in `auth.ts`.
+Set real `AUTH_FACEBOOK_ID`, `AUTH_FACEBOOK_SECRET`, and `AUTH_SECRET` values
+and register `/api/auth/callback/facebook` on the production origin with Meta.
+The `/feed` route is the responsive community homepage, and `/` redirects to it.
+Its sample posts and friends are labelled as previews. Composer attachments,
+posts, likes, and comments are local to the current visit; they do not yet write
+to D1 or upload to R2. Desktop sidebars and the center feed scroll independently;
+mobile navigation exposes the menu and community widgets in expandable panels.
+
+## Member profiles
+
+`/profile/[id]` loads a member, their accepted connections in either direction,
+and their public posts from D1. The post list is paginated, and private or hidden
+group posts are excluded. Profile photos fall back to the existing Auth.js image
+and avatar fields. Directory names and friend previews link to these pages.
+
+Owners can edit their bio, website, and up to ten social links in `EditProfileModal`.
+The Server Action checks the login session, updates only that session's user ID,
+validates HTTP(S) URLs, and revalidates the profile after saving. Other signed-in
+viewers can send requests or accept incoming requests; existing or blocked
+connections cannot be replaced by a new request.
+
+Apply `0002_social_graph.sql` before running the profile against a database that
+does not yet have the social graph columns. This feature does not add another migration.
+
+```sh
+npx wrangler d1 migrations apply zibuke-db --local
+# Before deploying to production:
+npx wrangler d1 migrations apply zibuke-db --remote
+# Validation and authorization tests (Node 22.6+):
+node --experimental-strip-types --test tests/profile-input.test.mjs tests/profile-actions.test.mjs
+```
+
 ## GitHub Actions automatic deployment
 
 `.github/workflows/deploy.yml` builds and deploys the Worker on pushes to `main`, and supports manual runs from the Actions tab. It installs the locked dependencies, generates types, runs lint, builds OpenNext, applies D1 migrations, and deploys the Worker.

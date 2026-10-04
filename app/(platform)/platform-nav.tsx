@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, MessageSquare, Users } from "lucide-react";
+import { Compass, Home, MessageSquare, Users } from "lucide-react";
 
 const platformLinks = [
+  { href: "/feed", label: "Home feed", icon: Home },
   { href: "/directory", label: "Directory", icon: Compass },
   { href: "/groups", label: "Groups", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
