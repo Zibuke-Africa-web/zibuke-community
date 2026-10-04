@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-// Explicitly export as `middleware` instead of `default` to satisfy OpenNext routing.
-// Auth.js validates the opaque session token against D1, including expiry.
-export const middleware = auth((request) => {
-  if (!request.auth?.user?.id) {
-    const login = new URL("/login", request.nextUrl.origin);
-    login.searchParams.set("callbackUrl", request.nextUrl.pathname + request.nextUrl.search);
+// 1. Define the Auth.js logic as a separate variable
+const authMiddleware = auth((req) => {
+  if (!req.auth?.user?.id) {
+    const login = new URL("/login", req.nextUrl.origin);
+    login.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
   return NextResponse.next();
 });
+
+// 2. Export an EXPLICIT function to satisfy OpenNext's strict parser
+export default async function middleware(req: any) {
+  return authMiddleware(req);
+}
 
 export const config = {
   matcher: [
