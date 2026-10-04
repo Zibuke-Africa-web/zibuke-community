@@ -9,10 +9,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
   const { env } = await getCloudflareContext({ async: true });
 
-  // Fallback to older variable names so the login works regardless of what is saved in Cloudflare
-  const facebookId = env.AUTH_FACEBOOK_ID || env.FACEBOOK_CLIENT_ID || env.FACEBOOK_ID;
-  const facebookSecret = env.AUTH_FACEBOOK_SECRET || env.FACEBOOK_CLIENT_SECRET || env.FACEBOOK_SECRET;
-
   return {
     trustHost: true,
     secret: env.AUTH_SECRET,
@@ -32,8 +28,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     },
     providers: [
       Facebook({
-        clientId: facebookId,
-        clientSecret: facebookSecret,
+        // The 'as string' assertion prevents any remaining TypeScript string/undefined mismatches
+        clientId: env.AUTH_FACEBOOK_ID as string,
+        clientSecret: env.AUTH_FACEBOOK_SECRET as string,
       }),
     ],
   };
