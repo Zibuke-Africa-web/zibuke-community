@@ -13,6 +13,7 @@ const authMiddleware = auth((req) => {
 
 // 2. Export an EXPLICIT function to satisfy OpenNext's strict parser
 export default async function middleware(req: any) {
+  // @ts-ignore
   return authMiddleware(req);
 }
 
