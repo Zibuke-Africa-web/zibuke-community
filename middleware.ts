@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 // 1. Define the Auth.js logic as a separate variable
@@ -12,8 +12,8 @@ const authMiddleware = auth((req) => {
 });
 
 // 2. Export an EXPLICIT function to satisfy OpenNext's strict parser
-export default async function middleware(req: any) {
-  // @ts-ignore
+export default async function middleware(req: NextRequest) {
+  // @ts-expect-error
   return authMiddleware(req);
 }
 
