@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { auth } from "@/auth";
 
 const SAFE_KEY = /^uploads\/[A-Za-z0-9._-]+$/;
 
@@ -6,6 +7,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ key: string[] }> },
 ) {
+  if (!(await auth())?.user?.id) return new Response("Unauthorized", { status: 401 });
   const { key } = await params;
   const objectKey = key.join("/");
 
@@ -26,7 +28,7 @@ export async function GET(
         object.httpMetadata?.contentType ?? "application/octet-stream",
       "content-security-policy": "default-src 'none'; sandbox",
       "x-content-type-options": "nosniff",
-      "cache-control": "public, max-age=31536000, immutable",
+      "cache-control": "private, no-store",
     },
   });
 }

@@ -90,6 +90,32 @@ mobile navigation exposes the menu and community widgets in expandable panels.
 
 ## Member profiles
 
+## Authentication
+
+`/login` is the public Facebook sign-in page. Auth.js registers it for sign-in
+and error handling, and Facebook is the only enabled login provider.
+Root `middleware.ts` validates database sessions through Auth.js for all platform
+routes, including nested pages, admin pages, and uploaded media. Login, Auth.js
+endpoints, and framework/static assets remain public to allow OAuth to complete.
+The platform layout and mutation actions also check authentication server-side.
+Media responses are private and not cached publicly.
+
+The originally requested internal route is restored after login; external URLs
+and authentication routes are rejected as callback destinations. Facebook app
+credentials and `AUTH_SECRET` must be set in Cloudflare. Register
+`https://zibukecommunity.co.za/api/auth/callback/facebook` with Meta.
+
+Next.js 16 deprecates the `middleware.ts` filename in favor of `proxy.ts`; this
+project keeps the requested Edge middleware convention for OpenNext compatibility.
+
+Run the authentication regression checks with:
+
+```sh
+node --experimental-strip-types --test tests/auth-gate.test.mjs
+```
+
+## Member profiles
+
 All application pages live under `app/(platform)` and share `layout.tsx` and
 `platform-shell.tsx`: one header, primary navigation, scrolling content area,
 community widgets, and mobile menu. `platform-nav.tsx` is the shared source for
