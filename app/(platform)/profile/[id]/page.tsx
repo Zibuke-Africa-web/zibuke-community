@@ -69,20 +69,18 @@ export default async function ProfilePage({ params, searchParams }: {
   const website = profile.websiteUrl ?? profile.website;
   const card = "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm";
 
-  return <div className="min-h-screen bg-[#f4f6f8] text-slate-800">
-    <header className="border-b border-slate-200 bg-white"><nav aria-label="Profile navigation" className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"><Link href="/feed" className="text-2xl font-extrabold tracking-tight">zibuke<span className="text-brand-600">.</span></Link><div className="flex gap-5 text-sm font-semibold text-slate-500"><Link href="/feed" className="hover:text-brand-600">Home feed</Link><Link href="/directory" className="hover:text-brand-600">Find friends</Link></div></nav></header>
-    <main className="mx-auto max-w-6xl pb-12">
+  return <div className="@container/profile min-w-0 text-slate-800">
       <section aria-label={`${name}'s profile`} className="overflow-hidden bg-white shadow-sm sm:rounded-b-2xl">
         <div className="relative h-44 overflow-hidden bg-gradient-to-br from-brand-200 via-blue-100 to-emerald-100 sm:h-72 lg:h-80">
           {imageUrl(profile.coverPhotoUrl) ? <Image unoptimized src={imageUrl(profile.coverPhotoUrl)!} alt={`${name}'s cover photo`} fill sizes="(max-width: 1152px) 100vw, 1152px" className="object-cover" /> : <div aria-hidden="true" className="absolute -top-24 right-6 size-96 rounded-full border-[60px] border-white/30" />}
           {!profile.coverPhotoUrl && <span className="absolute right-6 bottom-6 text-xs font-semibold tracking-[.18em] text-brand-800/50 uppercase">Rooted in community</span>}
         </div>
-        <div className="relative px-5 pb-6 sm:px-8"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-5"><div className="-mt-16"><Avatar name={name} photo={photo} large /></div><div className="pb-2"><h1 className="text-3xl font-extrabold tracking-tight">{name}</h1><a href="#friends" className="mt-2 inline-block text-sm font-medium text-slate-500">{friendCount.total} {friendCount.total === 1 ? "friend" : "friends"}</a></div></div>
+        <div className="relative px-5 pb-6 sm:px-8"><div className="flex flex-col gap-4 @xl/profile:flex-row @xl/profile:items-end @xl/profile:justify-between">
+          <div className="flex flex-col gap-3 @xl/profile:flex-row @xl/profile:items-end sm:gap-5"><div className="-mt-16"><Avatar name={name} photo={photo} large /></div><div className="pb-2"><h1 className="text-3xl font-extrabold tracking-tight">{name}</h1><a href="#friends" className="mt-2 inline-block text-sm font-medium text-slate-500">{friendCount.total} {friendCount.total === 1 ? "friend" : "friends"}</a></div></div>
           <div className="pb-2">{isOwner ? <EditProfileModal bio={profile.bio} websiteUrl={website} socialLinks={socialLinks} /> : viewerId ? <FriendButton targetId={id} status={friendStatus} /> : <Link href={`/api/auth/signin?callbackUrl=${encodeURIComponent(`/profile/${id}`)}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white"><UsersRound size={17} />Add Friend</Link>}</div>
         </div><nav aria-label="Profile sections" className="mt-5 flex gap-6 border-t border-slate-100 pt-4 text-sm font-semibold"><a href="#posts" className="text-brand-600">Posts</a><a href="#intro" className="text-slate-500">About</a><a href="#friends" className="text-slate-500">Friends</a></nav></div>
       </section>
-      <div className="mt-6 grid items-start gap-5 px-4 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="mt-6 grid items-start gap-5 @3xl/profile:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <section id="intro" className={card}><h2 className="text-xl font-bold">Intro</h2><p className="mt-4 text-sm leading-7 whitespace-pre-wrap break-words text-slate-600">{profile.bio || "A little more about this person is coming soon."}</p><ul className="mt-5 space-y-4 text-sm text-slate-600">
             <li className="flex gap-3"><BriefcaseBusiness size={18} className="mt-0.5 shrink-0 text-slate-400" /><span>{profile.employmentStatus || "Employment status not shared"}</span></li>
@@ -98,6 +96,5 @@ export default async function ProfilePage({ params, searchParams }: {
           {(page > 1 || userPosts.length > 10) && <nav aria-label="Post pagination" className="flex justify-between text-sm font-semibold text-brand-700">{page > 1 ? <Link href={`/profile/${encodeURIComponent(id)}?page=${page - 1}#posts`}>← Newer posts</Link> : <span />}{userPosts.length > 10 && <Link href={`/profile/${encodeURIComponent(id)}?page=${page + 1}#posts`}>Older posts →</Link>}</nav>}
         </section>
       </div>
-    </main>
   </div>;
 }

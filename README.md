@@ -90,6 +90,15 @@ mobile navigation exposes the menu and community widgets in expandable panels.
 
 ## Member profiles
 
+All application pages live under `app/(platform)` and share `layout.tsx` and
+`platform-shell.tsx`: one header, primary navigation, scrolling content area,
+community widgets, and mobile menu. `platform-nav.tsx` is the shared source for
+the seven primary links and uses `usePathname()` for active states. The profile
+link resolves from the server session; `/profile` redirects to the current user.
+Feed and profile pages contain content only. Admin pages retain their access
+check and local admin tabs inside the same shell. Events currently has a coming-soon
+page; Settings links to the existing profile editors, and Friends lists accepted connections.
+
 `/profile/[id]` loads a member, their accepted connections in either direction,
 and their public posts from D1. The post list is paginated, and private or hidden
 group posts are excluded. Profile photos fall back to the existing Auth.js image

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { like } from "drizzle-orm";
 import { Compass } from "lucide-react";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
@@ -24,9 +25,10 @@ function getInitials(name: string | null) {
     .join("");
 }
 
-export default async function DirectoryPage() {
+export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const query = (await searchParams).q?.trim().slice(0, 100) ?? "";
   const db = await getDb();
-  const members = await db.select().from(users).orderBy(users.name);
+  const members = await db.select().from(users).where(query ? like(users.name, `%${query}%`) : undefined).orderBy(users.name);
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,7 +48,7 @@ export default async function DirectoryPage() {
             <Compass aria-hidden="true" className="size-5" />
           </span>
           <h2 className="mt-4 text-sm font-semibold text-gray-900">
-            No members yet
+            {query ? "No matching members" : "No members yet"}
           </h2>
           <p className="mt-1.5 max-w-[58ch] text-sm leading-relaxed text-gray-600">
             Profiles appear here as people join. Each one lists their groups,

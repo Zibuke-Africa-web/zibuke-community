@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, CalendarDays, ChevronRight, Globe2, Heart, Home, ImagePlus, Menu, MessageCircle, Search, Send, Settings, Sparkles, Users, UsersRound, X } from "lucide-react";
+import { Globe2, Heart, ImagePlus, MessageCircle, Search, Send, X } from "lucide-react";
 
 type Post = { id: string; name: string; initials: string; role: string; time: string; text: string; art?: "garden" | "ideas"; media?: string; video?: boolean };
 const initialPosts: Post[] = [
@@ -11,26 +10,9 @@ const initialPosts: Post[] = [
   { id: "ideas", name: "Thandi Mokoena", initials: "TM", role: "Creative entrepreneur", time: "2026-10-04T07:30:00Z", text: "A little reminder for anyone starting something new: you don’t have to have it all figured out. Start where you are, share what you know, and find your people.\n\nWhat are you working on this week? 💡", art: "ideas" },
   { id: "connect", name: "Sipho Dlamini", initials: "SD", role: "Community builder", time: "2026-10-03T14:00:00Z", text: "The best part of a community? Someone always knows someone. Introduce yourself below — your next collaborator could be one conversation away. 🤝" },
 ];
-const friends = [{ name: "Thandi Mokoena", initials: "TM", color: "bg-rose-100 text-rose-700" }, { name: "Sipho Dlamini", initials: "SD", color: "bg-amber-100 text-amber-800" }, { name: "Lerato Nkosi", initials: "LN", color: "bg-violet-100 text-violet-700" }];
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600";
-
 function Avatar({ initials, small = false, color = "bg-brand-100 text-brand-700" }: { initials: string; small?: boolean; color?: string }) {
   return <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-full font-bold ${small ? "size-9 text-xs" : "size-11 text-sm"} ${color}`}>{initials}</span>;
-}
-
-function CommunityWidgets() {
-  return <div className="space-y-5">
-    <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-5">
-      <div className="mb-4 flex items-center justify-between"><span className="grid size-9 place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><Sparkles size={19} /></span><span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold tracking-wider text-brand-700 uppercase">Your daily spark</span></div>
-      <h2 className="font-bold tracking-tight">Zibuke AI Insights</h2><p className="mt-2 text-sm leading-6 text-slate-600">A little perspective. A new possibility.</p>
-      <div className="mt-4 rounded-xl bg-white/80 p-3 text-sm leading-6 text-slate-600">Your personalised community insights will appear here as this feature becomes available.</div>
-      <Link href="/groups" className={`mt-4 flex items-center gap-2 text-sm font-semibold text-brand-700 ${focus}`}>Explore your communities <ArrowUpRight size={16} /></Link>
-    </section>
-    <section aria-labelledby="sponsored-title"><div className="mb-3 flex justify-between"><h2 id="sponsored-title" className="text-sm font-semibold text-slate-500">Sponsored</h2><span className="text-xs text-slate-400">Ad space</span></div>
-      <div className="relative overflow-hidden rounded-2xl bg-[#163d34] p-5 text-white"><div aria-hidden="true" className="absolute -right-8 -bottom-12 size-40 rounded-full border-[24px] border-lime-300/20" /><span className="text-[10px] font-semibold tracking-[.18em] text-lime-200 uppercase">Made for local businesses</span><p className="relative mt-5 max-w-44 text-2xl leading-tight font-semibold">Small business.<br />Big community.</p><p className="relative mt-3 max-w-48 text-xs leading-5 text-emerald-100">A space for brands that help our community thrive.</p><span className="mt-5 inline-block rounded-lg bg-white/10 px-3 py-2 text-xs">Your brand could be here</span></div>
-    </section>
-    <section className="border-t border-slate-200 pt-5"><div className="flex items-center justify-between"><h2 className="text-sm font-bold">Active friends / Chat</h2><span className="text-[10px] text-slate-400">Preview</span></div><ul className="mt-3 space-y-1">{friends.map(friend => <li key={friend.name}><Link href="/messages" className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-white ${focus}`}><span className="relative"><Avatar initials={friend.initials} small color={friend.color} /><span aria-hidden="true" className="absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-[#f4f6f8] bg-emerald-500" /></span><span className="text-sm font-medium">{friend.name}</span><MessageCircle size={15} className="ml-auto text-slate-400" /></Link></li>)}</ul><p className="mt-3 text-xs leading-5 text-slate-400">Sample contacts. Live chat presence is coming soon.</p></section>
-  </div>;
 }
 
 function PostCard({ post }: { post: Post }) {
@@ -51,10 +33,7 @@ function PostCard({ post }: { post: Post }) {
 }
 
 export function CommunityHome() {
-  const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
-  const [widgets, setWidgets] = useState(false);
-  const [events, setEvents] = useState(false);
   const [posts, setPosts] = useState(initialPosts);
   const [draft, setDraft] = useState("");
   const [attachment, setAttachment] = useState<{ url: string; name: string; video: boolean } | null>(null);
@@ -63,28 +42,10 @@ export function CommunityHome() {
   const urls = useRef<string[]>([]);
   useEffect(() => () => urls.current.forEach(url => URL.revokeObjectURL(url)), []);
 
-  function navigation() {
-    return <nav aria-label="Primary navigation" className="space-y-1">
-      <Link href="/profile/setup" className={`mb-5 flex items-center gap-3 rounded-xl p-3 hover:bg-white ${focus}`}><Avatar initials="Y" /><span><span className="block text-sm font-bold">Your profile</span><span className="text-xs text-slate-500">Make yourself at home</span></span><ChevronRight size={15} className="ml-auto text-slate-400" /></Link>
-      {[{ href: "/feed", label: "Home feed", icon: Home }, { href: "/directory", label: "Friends", icon: UsersRound }, { href: "/groups", label: "Groups", icon: Users }].map(({ href, label, icon: Icon }) => <Link onClick={() => setMenu(false)} key={href} href={href} aria-current={href === "/feed" ? "page" : undefined} className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold ${focus} ${href === "/feed" ? "bg-brand-600/10 text-brand-700" : "text-slate-600 hover:bg-white"}`}><Icon size={21} />{label}</Link>)}
-      <button onClick={() => { setEvents(!events); setMenu(false); }} aria-expanded={events} className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-white ${focus}`}><CalendarDays size={21} />Events</button>
-      <Link href="/profile/setup" className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-white ${focus}`}><Settings size={21} />Settings</Link>
-    </nav>;
-  }
-
-  return <div className="h-dvh overflow-hidden bg-[#f4f6f8] font-sans text-slate-800">
-    <a href="#community-feed" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3">Skip to feed</a>
-    <header className="relative z-30 h-18 border-b border-slate-200 bg-white"><div className="mx-auto flex h-full max-w-[1480px] items-center gap-3 px-4 sm:px-6 lg:gap-8">
-      <Link href="/feed" className={`flex shrink-0 items-center gap-2.5 ${focus}`}><span className="grid size-10 place-items-center rounded-xl bg-brand-600 text-2xl font-black text-white">z<span className="sr-only">Zibuke</span></span><span className="hidden sm:block"><span className="block text-xl leading-5 font-extrabold tracking-tight">zibuke<span className="text-brand-600">.</span></span><span className="text-[9px] font-semibold tracking-[.2em] text-slate-400 uppercase">Community</span></span></Link>
-      <form onSubmit={event => event.preventDefault()} role="search" className="relative max-w-sm flex-1"><Search size={17} className="pointer-events-none absolute top-3.5 left-4 text-slate-400" /><input type="search" value={search} onChange={event => setSearch(event.target.value)} name="q" aria-label="Search feed posts and authors" placeholder="Search your community feed" className="h-11 w-full rounded-full bg-slate-100 pr-3 pl-11 text-sm outline-brand-600" /></form>
-      <div className="ml-auto flex items-center gap-2"><span className="mr-3 hidden text-xs text-slate-400 xl:block">A place to belong. A space to grow.</span><Link href="/messages" aria-label="Messages" className={`grid size-10 place-items-center rounded-full bg-slate-100 text-slate-600 ${focus}`}><MessageCircle size={19} /></Link><Link href="/profile/setup" aria-label="Your profile" className={`hidden rounded-full sm:block ${focus}`}><Avatar initials="Y" small /></Link></div>
-    </div></header>
-    <div className="mx-auto grid h-[calc(100dvh-4.5rem)] max-w-[1480px] grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-5 lg:px-6 xl:grid-cols-[250px_minmax(0,680px)_290px] xl:gap-8">
-      <aside className="sticky top-0 hidden h-full overflow-y-auto pt-7 pb-8 lg:block">{navigation()}<div className="mx-4 mt-7 border-t border-slate-200 pt-6"><p className="text-[10px] font-bold tracking-[.16em] text-slate-400 uppercase">Better, together</p><p className="mt-3 text-sm leading-6 text-slate-500">Connect with people.<br />Turn ideas into possibilities.</p><Link href="/groups" className={`mt-5 flex items-center gap-2 text-xs font-semibold text-brand-700 ${focus}`}>Discover a group <ArrowUpRight size={14} /></Link><p className="mt-14 text-[11px] leading-6 text-slate-400">Zibuke Community<br />Built for connection. © 2026</p></div></aside>
-      <main id="community-feed" tabIndex={-1} className="min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-0 lg:pt-7 lg:pb-8">
+  return (
         <div className="mx-auto max-w-[680px] space-y-5">
+          <label className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-slate-500"><Search size={18} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} aria-label="Search feed posts" placeholder="Search this feed" className="min-w-0 flex-1 text-sm outline-none" /></label>
           <div className="flex items-end justify-between gap-3"><div><p className="mb-1 text-[10px] font-bold tracking-[.18em] text-brand-600 uppercase">Your people. Your possibilities.</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Good to see you here<span className="text-brand-600">.</span></h1></div><span className="mb-1 shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] text-slate-500">Community preview</span></div>
-          {events && <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="flex items-center gap-2 font-semibold"><CalendarDays size={18} />Community events</h2><p className="mt-2 text-sm text-slate-600">Upcoming meetups and gatherings will appear here. Explore groups to connect with local organisers.</p><Link href="/groups" className="mt-3 inline-block text-sm font-semibold text-brand-700">Explore groups →</Link></section>}
           <section aria-label="Create a post" className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5"><form onSubmit={event => { event.preventDefault(); if (!draft.trim() && !attachment) return; setPosts([{ id: crypto.randomUUID(), name: "You", initials: "Y", role: "Local preview", time: new Date().toISOString(), text: draft.trim(), media: attachment?.url, video: attachment?.video }, ...posts]); setDraft(""); setAttachment(null); setNotice("Added to your preview feed. This post is only saved for this visit."); }}>
             <div className="flex items-start gap-3"><Avatar initials="Y" /><div className="flex-1"><label htmlFor="new-post" className="sr-only">What’s on your mind?</label><textarea id="new-post" maxLength={5000} value={draft} onChange={event => setDraft(event.target.value)} rows={2} placeholder="What's on your mind?" className="w-full resize-y rounded-xl bg-slate-50 p-3 text-sm leading-6 outline-brand-600 placeholder:text-slate-400" /></div></div>
             {attachment && <div className="relative mt-3 rounded-xl bg-slate-50 p-3">{attachment.video ? <video src={attachment.url} controls className="max-h-56 w-full" /> : <Image unoptimized src={attachment.url} alt={attachment.name} width={600} height={400} className="max-h-56 w-full object-contain" />}<button type="button" aria-label="Remove attachment" onClick={() => { URL.revokeObjectURL(attachment.url); setAttachment(null); }} className={`absolute top-2 right-2 rounded-full bg-white p-2 shadow ${focus}`}><X size={16} /></button></div>}
@@ -96,10 +57,6 @@ export function CommunityHome() {
           {search && !posts.some(post => `${post.name} ${post.text}`.toLowerCase().includes(search.trim().toLowerCase())) && <p role="status" className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500">No matching posts. Try another name or topic.</p>}
           <p className="py-4 text-center text-xs text-slate-400">You’re all caught up. Make a new connection today.</p>
         </div>
-      </main>
-      <aside aria-label="Community widgets" className="sticky top-0 hidden h-full overflow-y-auto pt-7 pb-8 lg:block"><CommunityWidgets /></aside>
-    </div>
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"><Link href="/feed" aria-current="page" className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-brand-600 ${focus}`}><Home size={21} />Feed</Link><Link href="/groups" className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-500 ${focus}`}><Users size={21} />Groups</Link><button aria-expanded={widgets} aria-controls="mobile-widgets" onClick={() => { setWidgets(!widgets); setMenu(false); }} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-500 ${focus}`}><Sparkles size={21} />Community</button><button aria-expanded={menu} aria-controls="mobile-menu" onClick={() => { setMenu(!menu); setWidgets(false); }} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-500 ${focus}`}>{menu ? <X size={21} /> : <Menu size={21} />}Menu</button></nav>
-    {(menu || widgets) && <section id={menu ? "mobile-menu" : "mobile-widgets"} aria-label={menu ? "Navigation menu" : "Community widgets"} onKeyDown={event => { if (event.key === "Escape") { setMenu(false); setWidgets(false); } }} className="fixed inset-x-0 top-18 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 overflow-y-auto bg-[#f4f6f8] p-5 lg:hidden"><div className="mx-auto max-w-md"><div className="mb-4 flex items-center justify-between"><h2 className="font-bold">{menu ? "Your community" : "Community corner"}</h2><button autoFocus aria-label="Close panel" onClick={() => { setMenu(false); setWidgets(false); }} className={`grid size-11 place-items-center rounded-full bg-white ${focus}`}><X size={20} /></button></div>{menu ? navigation() : <CommunityWidgets />}</div></section>}
-  </div>;
+
+  );
 }

@@ -2,67 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Home, MessageSquare, Users } from "lucide-react";
+import { CalendarDays, Compass, Home, Settings, UserRound, Users, UsersRound } from "lucide-react";
 
-const platformLinks = [
-  { href: "/feed", label: "Home feed", icon: Home },
-  { href: "/directory", label: "Directory", icon: Compass },
-  { href: "/groups", label: "Groups", icon: Users },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
-];
-
-type NavVariant = "sidebar" | "tabs";
-
-const listStyle: Record<NavVariant, string> = {
-  sidebar: "flex flex-col gap-1",
-  tabs: "mx-auto flex max-w-[1400px] gap-1 overflow-x-auto px-4 py-2",
-};
-
-const linkStyle: Record<NavVariant, string> = {
-  sidebar: "gap-3 rounded-lg px-3",
-  tabs: "gap-2 rounded-full px-3.5",
-};
-
-const iconStyle: Record<NavVariant, string> = {
-  sidebar: "size-5",
-  tabs: "size-4",
-};
-
-const ringOffsetStyle: Record<NavVariant, string> = {
-  sidebar: "focus-visible:ring-offset-gray-100",
-  tabs: "focus-visible:ring-offset-white",
-};
-
-export function PlatformNav({ variant }: { variant: NavVariant }) {
+export function PlatformNav({ profileHref, onNavigate }: { profileHref: string; onNavigate?: () => void }) {
   const pathname = usePathname();
-
-  return (
-    <ul className={listStyle[variant]}>
-      {platformLinks.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname === href || pathname.startsWith(`${href}/`);
-
-        return (
-          <li key={href}>
-            <Link
-              href={href}
-              aria-current={isActive ? "page" : undefined}
-              className={`flex min-h-11 items-center text-sm whitespace-nowrap transition-colors ${linkStyle[variant]} ${
-                isActive
-                  ? "bg-brand-600/10 font-semibold text-brand-700"
-                  : "font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-              } focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${ringOffsetStyle[variant]}`}
-            >
-              <Icon
-                aria-hidden="true"
-                className={`${iconStyle[variant]} ${
-                  isActive ? "text-brand-600" : "text-gray-500"
-                }`}
-              />
-              {label}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
+  const links = [
+    { href: profileHref, label: "Your Profile", icon: UserRound },
+    { href: "/feed", label: "Home Feed", icon: Home },
+    { href: "/friends", label: "Friends", icon: UsersRound },
+    { href: "/groups", label: "Groups", icon: Users },
+    { href: "/events", label: "Events", icon: CalendarDays },
+    { href: "/directory", label: "Directory", icon: Compass },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ];
+  return <ul className="space-y-1">{links.map(({ href, label, icon: Icon }) => {
+    const active = pathname === href || pathname.startsWith(`${href}/`);
+    return <li key={label}><Link href={href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${active ? "bg-brand-600/10 text-brand-700" : "text-slate-600 hover:bg-white"}`}><Icon size={21} aria-hidden="true" />{label}</Link></li>;
+  })}</ul>;
 }
