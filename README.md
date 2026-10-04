@@ -153,4 +153,5 @@ node --experimental-strip-types --test tests/profile-input.test.mjs tests/profil
 
 Add a repository Actions secret named `CLOUDFLARE_API_TOKEN`, scoped to the production Cloudflare account, with Workers Scripts Edit, D1 Edit, and Workers R2 Storage Write permissions. The account ID is already set in the workflow. Runtime Facebook credentials and `AUTH_SECRET` stay in the existing Worker's secrets.
 
+
 Use either this GitHub Actions workflow or Cloudflare Workers Builds as the deployment trigger to avoid deploying every commit twice.
