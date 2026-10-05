@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowUpRight, HeartHandshake, Sparkles, UsersRound } from "lucide-react";
-import { FacebookLoginButton } from "@/components/facebook-login-button";
+import { LoginMethods } from "@/components/login-methods";
 import { loginDestination } from "@/lib/login-redirect";
 
 export const metadata: Metadata = { title: "Welcome · Zibuke Community", description: "Find your people. Share your ideas. Grow together with Zibuke Community." };
@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <p className="relative hidden text-xs text-slate-500 lg:block">Built for connection. Made for community.</p>
     </section>
     <section aria-labelledby="login-heading" className="flex items-center justify-center px-5 py-12 sm:px-12 lg:py-16"><div className="w-full max-w-md"><span className="mb-6 grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-600"><HeartHandshake size={25} /></span><h2 id="login-heading" className="text-3xl font-bold tracking-tight">Welcome to your community.</h2><p className="mt-4 text-sm leading-7 text-slate-500">Connect with people who inspire you, discover local groups, and be part of something bigger.</p>
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="mb-2 font-semibold">Come on in.</h3><p className="mb-5 text-sm leading-6 text-slate-500">Use your Facebook account to join or sign in.</p>{params.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{params.error === "OAuthAccountNotLinked" ? "This email is already connected to another sign-in method. Contact the community administrator to link your Facebook account." : "We couldn’t complete Facebook sign-in. Please try again."}</p>}<FacebookLoginButton callbackUrl={loginDestination(params.callbackUrl)} /><p className="mt-4 text-xs leading-5 text-slate-400">You’ll continue securely to Facebook to sign in.</p></div>
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="mb-2 font-semibold">Come on in.</h3><p className="mb-5 text-sm leading-6 text-slate-500">Choose how you’d like to join or sign in.</p>{params.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{params.error === "OAuthAccountNotLinked" ? "This email is already connected to another sign-in method. Use your original method or sign in with an email link." : params.error === "Verification" ? "This sign-in link has expired or has already been used. Request a new email link below." : "We couldn’t complete sign-in. Please try again."}</p>}<LoginMethods callbackUrl={loginDestination(params.callbackUrl)} /></div>
       <div className="mt-7 grid grid-cols-3 gap-3 text-center text-xs text-slate-500"><div><UsersRound className="mx-auto mb-2 text-brand-500" size={20} />Find your people</div><div><Sparkles className="mx-auto mb-2 text-brand-500" size={20} />Fresh perspectives</div><div><ArrowUpRight className="mx-auto mb-2 text-brand-500" size={20} />New possibilities</div></div>
     </div></section>
   </main>;

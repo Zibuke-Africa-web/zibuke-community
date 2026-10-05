@@ -88,12 +88,15 @@ posts, likes, and comments are local to the current visit; they do not yet write
 to D1 or upload to R2. Desktop sidebars and the center feed scroll independently;
 mobile navigation exposes the menu and community widgets in expandable panels.
 
-## Member profiles
-
 ## Authentication
 
-`/login` is the public Facebook sign-in page. Auth.js registers it for sign-in
-and error handling, and Facebook is the only enabled login provider.
+`/login` offers Facebook, Google, LinkedIn OpenID Connect, and passwordless email.
+Auth.js registers it for sign-in and error handling. All methods retain the D1
+database session strategy and the existing DrizzleAdapter table mappings.
+Resend sends single-use magic links over HTTPS `fetch` (no SMTP or Nodemailer);
+links expire after 30 minutes. Existing `verificationTokens` storage handles
+verification, and first-time email users are created after verification. No new
+schema migration is required for these providers.
 Root `middleware.ts` validates database sessions through Auth.js for all platform
 routes, including nested pages, admin pages, and uploaded media. Login, Auth.js
 endpoints, and framework/static assets remain public to allow OAuth to complete.
@@ -101,9 +104,47 @@ The platform layout and mutation actions also check authentication server-side.
 Media responses are private and not cached publicly.
 
 The originally requested internal route is restored after login; external URLs
-and authentication routes are rejected as callback destinations. Facebook app
-credentials and `AUTH_SECRET` must be set in Cloudflare. Register
-`https://zibukecommunity.co.za/api/auth/callback/facebook` with Meta.
+and authentication routes are rejected as callback destinations. OAuth accounts
+are not automatically linked merely because their email addresses match.
+
+### Provider registration and Worker secrets
+
+Configure these values under Cloudflare **Workers & Pages → zibuke-community →
+Settings → Variables and Secrets**. Use secrets for keys and client secrets;
+client IDs and the sender address may be plain variables. Local development uses
+the ignored `.dev.vars` file with the same names. `env.d.ts` augments the generated
+`CloudflareEnv` type, including `AUTH_LINKEDIN_ID` and `AUTH_LINKEDIN_SECRET`.
+Type assertions do not supply missing runtime credentials.
+
+| Provider | Environment variables | Production redirect URI |
+| --- | --- | --- |
+| Facebook | `AUTH_FACEBOOK_ID`, `AUTH_FACEBOOK_SECRET` | `https://zibukecommunity.co.za/api/auth/callback/facebook` |
+| Google | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | `https://zibukecommunity.co.za/api/auth/callback/google` |
+| LinkedIn | `AUTH_LINKEDIN_ID`, `AUTH_LINKEDIN_SECRET` | `https://zibukecommunity.co.za/api/auth/callback/linkedin` |
+| Resend email | `AUTH_RESEND_KEY`, `AUTH_RESEND_FROM` | Auth.js generates `/api/auth/callback/resend` links; no OAuth redirect registration is needed. |
+
+Keep the existing `AUTH_SECRET` configured and stable across deployments.
+
+- Google Cloud Console: create an OAuth **Web application** client, configure the
+  consent screen/audience, and add the exact Google redirect URI above. If asked
+  for a JavaScript origin, use `https://zibukecommunity.co.za`. Add test users while
+  the app is in testing mode. Local callback: `http://localhost:3000/api/auth/callback/google`.
+- LinkedIn Developer Portal: request the **Sign In with LinkedIn using OpenID
+  Connect** product and add the exact LinkedIn URI above under authorised redirect
+  URLs. This provider requests `openid profile email`. Local callback:
+  `http://localhost:3000/api/auth/callback/linkedin`.
+- Resend: verify your sending domain using Resend's DNS records and create a
+  sending API key. Set `AUTH_RESEND_FROM` to an address on that verified domain,
+  for example `Zibuke Community <login@zibukecommunity.co.za>`. No mailbox password,
+  SMTP connection, or inbound-email webhook is required.
+
+Use the registered production hostname when signing in; a `workers.dev` hostname
+has different callback URLs and must be separately registered if used for OAuth.
+Complete real-provider sign-in and email-delivery checks after setting secrets.
+
+Provider references: [Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server),
+[LinkedIn OIDC](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2),
+[Resend domains](https://resend.com/docs/dashboard/domains/introduction).
 
 Next.js 16 deprecates the `middleware.ts` filename in favor of `proxy.ts`; this
 project keeps the requested Edge middleware convention for OpenNext compatibility.
@@ -111,7 +152,7 @@ project keeps the requested Edge middleware convention for OpenNext compatibilit
 Run the authentication regression checks with:
 
 ```sh
-node --experimental-strip-types --test tests/auth-gate.test.mjs
+node --experimental-strip-types --test tests/auth-gate.test.mjs tests/auth-providers.test.mjs
 ```
 
 ## Member profiles
