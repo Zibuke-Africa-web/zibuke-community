@@ -1,8 +1,10 @@
 # Spaces rollout
 
-Schema additions: `db/schema.ts`. Reviewable raw D1 SQL: `drizzle/0003_spaces.sql`.
+Schema additions: `db/schema.ts`. Reviewable raw D1 SQL: `drizzle/0003_spaces.sql`
+and `drizzle/0004_space_posts.sql`.
 The generated Drizzle snapshot and journal are included for future migrations.
-No existing table is changed. Timestamps use Unix seconds. Membership has a unique
+Phase 4 adds a nullable `space_id` foreign key and index to `posts`; old rows remain
+unchanged with NULL space IDs. Timestamps use Unix seconds. Membership has a unique
 space/user index and cascading foreign keys.
 
 Review pending migrations before applying: Wrangler applies all pending migrations,
@@ -36,9 +38,10 @@ Apply the migration before releasing the routes.
   public self-join or invitation management UI.
 - Joining validates the session server-side and atomically checks privacy.
   Duplicate joins do not increase membership counts.
-- The space feed is an empty layout, not a post publishing feature. No existing
-  posts are reused or modified. Persistent space posts require a separate schema
-  addition and posting flow in a future change.
+- Space members can publish plain-text posts with optional safe media links. Reads
+  enforce space privacy. The latest 50 posts are displayed, newest first. Existing
+  posts are not reassigned to spaces; profile and Messages lists exclude space posts.
+- Preview fallback spaces cannot persist joins or posts until created in D1.
 - All new surfaces use black/lime or white/black, with scale or opacity hover effects.
 
 Smoke check after local migration: browse all four seeded spaces, sign in and join,

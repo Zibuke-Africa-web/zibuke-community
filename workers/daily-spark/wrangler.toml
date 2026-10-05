@@ -1,0 +1,14 @@
+name = "zibuke-daily-spark-scheduler"
+main = "worker.ts"
+compatibility_date = "2026-09-28"
+workers_dev = false
+
+[triggers]
+# Cron uses UTC: 06:00 UTC = 08:00 Africa/Johannesburg.
+crons = ["0 6 * * *"]
+
+[[services]]
+binding = "COMMUNITY"
+service = "zibuke-community"
+
+# Configure the same CRON_SECRET as the main application using Wrangler secrets.

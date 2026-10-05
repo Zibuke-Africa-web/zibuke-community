@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNull } from "drizzle-orm";
 import { Heart, MessageCircle, MessageSquare } from "lucide-react";
 import { likePost } from "@/app/actions";
 import { getDb } from "@/db";
@@ -58,6 +58,7 @@ export default async function MessagesPage() {
     })
     .from(posts)
     .innerJoin(users, eq(posts.userId, users.id))
+    .where(isNull(posts.spaceId))
     .orderBy(desc(posts.createdAt));
 
   return (

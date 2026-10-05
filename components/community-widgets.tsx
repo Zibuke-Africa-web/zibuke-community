@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Sparkles, MessageCircle } from "lucide-react";
+import { fallbackSpark, type DailySpark } from "@/lib/daily-spark";
 
 const friends = [
   { name: "Thandi Mokoena", initials: "TM", color: "bg-[#ccff00] text-black" },
@@ -17,7 +18,7 @@ function Avatar({ initials, small = false, color = "bg-[#ccff00] text-black" }: 
   );
 }
 
-export function CommunityWidgets() {
+export function CommunityWidgets({ spark = fallbackSpark }: { spark?: DailySpark }) {
   return (
     <div className="space-y-5 bg-white text-black">
       {/* AI Insights Card */}
@@ -27,16 +28,17 @@ export function CommunityWidgets() {
             <Sparkles size={19} />
           </span>
           <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold tracking-wider text-black uppercase">
-            Your daily spark
+            Today&apos;s Community Spark
           </span>
         </div>
         <h2 className="font-bold tracking-tight">Zibuke AI Insights</h2>
-        <p className="mt-2 text-sm leading-6 text-black">A little perspective. A new possibility.</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-black">{spark.topic}</p>
         <div className="mt-4 rounded-xl bg-white p-3 text-sm leading-6 text-black">
-          Your personalised community insights will appear here as this feature becomes available.
+          {spark.prompt}
         </div>
-        <Link href="/spaces" className={`mt-4 flex items-center gap-2 text-sm font-semibold text-black hover:opacity-90 ${focus}`}>
-          Explore community spaces →
+        <p className="mt-2 text-[10px] text-black">{spark.createdAt ? "AI-generated conversation starter" : "Curated conversation starter"}</p>
+        <Link href={`/spaces/${spark.targetSpaceSlug}`} className={`mt-4 flex items-center gap-2 text-sm font-semibold text-black hover:opacity-90 ${focus}`}>
+          Join today&apos;s conversation →
         </Link>
       </section>
 

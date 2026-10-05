@@ -14,7 +14,7 @@ export async function loadSpaces(): Promise<{ spaces: Space[]; preview: boolean 
       id: spaces.id, slug: spaces.slug, name: spaces.name, tagline: spaces.tagline,
       description: spaces.description, icon: spaces.icon, privacy: spaces.privacy,
       isFeatured: spaces.isFeatured,
-      members: sql<number>`(select count(*) from ${spaceMembers} where ${spaceMembers.spaceId} = ${spaces.id})`.mapWith(Number),
+      members: sql<number>`(select count(*) from space_members sm where sm.space_id = spaces.id)`.mapWith(Number),
     }).from(spaces).orderBy(asc(spaces.name));
     if (!rows.length) return { spaces: defaultSpaces, preview: true };
     // Auth failures are treated as anonymous, never as permission to read private data.

@@ -123,13 +123,14 @@ export const posts = sqliteTable("posts", {
   groupId: text("group_id").references(() => groups.id, {
     onDelete: "set null",
   }),
+  spaceId: text("space_id").references(() => spaces.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   mediaUrl: text("media_url"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(() => new Date()),
-});
+}, (table) => [index("posts_space_created_idx").on(table.spaceId, table.createdAt, table.id)]);
 
 export const spaces = sqliteTable("spaces", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -154,4 +155,18 @@ export const spaceMembers = sqliteTable("space_members", {
 }, (table) => [
   uniqueIndex("space_members_space_user_unique").on(table.spaceId, table.userId),
   index("space_members_user_idx").on(table.userId),
+]);
+
+export const dailySparks = sqliteTable("daily_sparks", {
+  id: text("id").primaryKey(),
+  topic: text("topic").notNull(),
+  prompt: text("prompt").notNull(),
+  actionText: text("action_text"),
+  targetSpaceSlug: text("target_space_slug").notNull().default("welcome"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+}, (table) => [
+  index("daily_sparks_created_idx").on(table.createdAt),
+  uniqueIndex("daily_sparks_one_active").on(table.isActive).where(sql`${table.isActive} = 1`),
+  check("daily_sparks_active_boolean", sql`${table.isActive} in (0, 1)`),
 ]);

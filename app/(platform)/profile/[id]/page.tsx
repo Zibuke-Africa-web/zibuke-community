@@ -53,7 +53,7 @@ export default async function ProfilePage({ params, searchParams }: {
     db.select({ total: count() }).from(connections).where(accepted),
     db.select({ id: posts.id, content: posts.content, mediaUrl: posts.mediaUrl, createdAt: posts.createdAt })
       .from(posts).leftJoin(groups, eq(groups.id, posts.groupId))
-      .where(and(eq(posts.userId, id), or(isNull(posts.groupId), and(eq(groups.privacy, "public"), eq(groups.visibility, "visible")))))
+      .where(and(isNull(posts.spaceId), eq(posts.userId, id), or(isNull(posts.groupId), and(eq(groups.privacy, "public"), eq(groups.visibility, "visible")))))
       .orderBy(desc(posts.createdAt), desc(posts.id)).limit(11).offset((page - 1) * 10),
     viewerId && !isOwner ? db.select().from(connections).where(or(
       and(eq(connections.requesterId, viewerId), eq(connections.addresseeId, id)),

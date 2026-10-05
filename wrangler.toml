@@ -31,3 +31,8 @@ bucket_name = "zibuke-media"
 
 [images]
 binding = "IMAGES"
+
+[ai]
+binding = "AI"
+
+# Set CRON_SECRET using `wrangler secret put CRON_SECRET` (never commit its value).
