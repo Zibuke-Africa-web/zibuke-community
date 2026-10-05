@@ -39,20 +39,25 @@ export async function POST(request: Request) {
     catch { return Response.json({ error: "INVALID_REQUEST" }, { status: 400, headers }); }
     const messages = parseCoHostMessages(body);
     if (!messages) return Response.json({ error: "INVALID_MESSAGES" }, { status: 400, headers });
-    const { env } = await getCloudflareContext({ async: true });
-    const apiKey = process.env.GROQ_API_KEY || env.GROQ_API_KEY;
+    const cf = await getCloudflareContext({ async: true }).catch(() => null);
+    const apiKey = cf?.env.GROQ_API_KEY || process.env.GROQ_API_KEY;
     if (!apiKey) return Response.json({ error: "COHOST_NOT_CONFIGURED" }, { status: 503, headers });
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...messages], stream: true, temperature: 0.6, max_completion_tokens: 900 }),
+      body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...messages], stream: false, temperature: 0.6, max_completion_tokens: 900 }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(60000)]),
     });
-    if (!upstream.ok || !upstream.body) {
+    if (!upstream.ok) {
       await upstream.body?.cancel();
       return Response.json({ error: upstream.status === 429 ? "RATE_LIMITED" : "COHOST_UNAVAILABLE" }, { status: upstream.status === 429 ? 429 : 502, headers });
     }
-    return new Response(upstream.body, { headers: { ...headers, "Content-Type": "text/event-stream; charset=utf-8", "X-Accel-Buffering": "no", "X-Content-Type-Options": "nosniff" } });
+    const result = await upstream.json().catch(() => null) as { choices?: { message?: { content?: unknown }; finish_reason?: string }[] } | null;
+    const content = result?.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || !content.trim() || result?.choices?.[0]?.finish_reason !== "stop") {
+      return Response.json({ error: "INVALID_PROVIDER_RESPONSE" }, { status: 502, headers });
+    }
+    return Response.json({ content: content.trim() }, { headers });
   } catch {
     return Response.json({ error: "COHOST_UNAVAILABLE" }, { status: 503, headers });
   }

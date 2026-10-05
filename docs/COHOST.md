@@ -3,7 +3,7 @@
 The platform shell mounts one shared provider and one native modal dialog. Both
 desktop and mobile widgets open the same chat with the Open Co-Host button. The
 existing Daily Spark conversation link still leads to its space. The drawer supports
-streaming, Stop, Clear Chat, copying replies, Escape, native modal focus containment
+complete JSON replies, Stop, Clear Chat, copying replies, Escape, native modal focus containment
 and restoration, and reduced-motion preferences. Chat lives only in page memory.
 
 ## Configuration
@@ -14,8 +14,8 @@ Set `GROQ_API_KEY` in the ignored `.dev.vars` for local development, or use:
 npx.cmd wrangler secret put GROQ_API_KEY
 ```
 
-The route reads `process.env.GROQ_API_KEY`, falling back to the Cloudflare secret
-binding. Never put the key in source code or a NEXT_PUBLIC variable. No key is read
+The route reads the Cloudflare secret binding using asynchronous context, falling
+back to `process.env.GROQ_API_KEY`. Never put the key in source code or a NEXT_PUBLIC variable. No key is read
 from loose text files and no new package is required. Provider quotas and pricing
 depend on the Groq account; this implementation does not assume unlimited free use.
 
@@ -23,7 +23,7 @@ depend on the Groq account; this implementation does not assume unlimited free u
 alternating user/assistant messages ending with a user message. Client system roles
 are rejected. Requests are limited to 64 KiB, 20 messages, 4,000 characters per message
 and 16,000 characters of combined history. Replies use `llama-3.3-70b-versatile`,
-900 output tokens, and a 60-second timeout, with user cancellation propagated upstream.
+900 output tokens, non-streaming `{ content: string }` responses, and a 60-second timeout, with user cancellation propagated upstream.
 Provider rate-limit errors receive a retry notice; credentials and upstream error
 bodies are never returned to the client. Configure account quotas or Cloudflare
 rate-limiting rules for your traffic requirements; no per-user persistent quota is added.
@@ -55,5 +55,5 @@ sent to Groq only when the member sends a message or selects a suggestion.
 
 Run `node --test tests/cohost.test.mjs`, lint, and `npm.cmd run build:cloudflare`.
 With a configured key, check desktop/mobile opening, keyboard focus and Escape,
-incremental replies, Stop/Clear during a reply, copy, unauthenticated notices and
+complete replies, Stop/Clear during a reply, copy, unauthenticated notices and
 provider errors. Mocked tests do not call Groq or consume API quota.

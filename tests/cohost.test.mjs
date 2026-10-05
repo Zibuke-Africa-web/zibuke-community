@@ -14,18 +14,16 @@ function load(file, modules = {}, globals = {}) {
 }
 const helpers = load('../lib/cohost.ts');
 const knowledge = load('../lib/cohost-knowledge.ts');
-const encode = text => new TextEncoder().encode(text);
-const event = text => `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\r\n\r\n`;
 
-function harness({ session = { user: { id: 'member' } }, key = 'test-key', status = 200 } = {}) {
+function harness({ session = { user: { id: 'member' } }, key = 'test-key', status = 200, providerBody = JSON.stringify({ choices: [{ message: { content: 'Hello neighbour!' }, finish_reason: 'stop' }] }), envKey = '', contextFails = false } = {}) {
   const calls = { fetch: 0, context: 0, payload: null, token: null };
   const route = load('../app/api/cohost/chat/route.ts', {
-    '@opennextjs/cloudflare': { getCloudflareContext: async options => { assert.equal(options.async, true); calls.context++; return { env: { GROQ_API_KEY: key } }; } },
+    '@opennextjs/cloudflare': { getCloudflareContext: async options => { assert.equal(options.async, true); calls.context++; if (contextFails) throw new Error('No context'); return { env: { GROQ_API_KEY: key } }; } },
     '@/auth': { auth: async () => session }, '@/lib/cohost': helpers, '@/lib/cohost-knowledge': knowledge,
-  }, { process: { env: {} }, fetch: async (url, options) => {
+  }, { process: { env: { GROQ_API_KEY: envKey } }, fetch: async (url, options) => {
     assert.equal(url, 'https://api.groq.com/openai/v1/chat/completions');
     calls.fetch++; calls.payload = JSON.parse(options.body); calls.token = options.headers.Authorization;
-    return new Response(status === 200 ? event('Hello neighbour!') + 'data: [DONE]\n\n' : 'secret upstream error detail', { status });
+    return new Response(status === 200 ? providerBody : 'secret upstream error detail', { status });
   } });
   const request = (body = { messages: [{ role: 'user', content: 'Hello' }] }, origin = 'https://community.test') => new Request('https://community.test/api/cohost/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json', origin }, body: typeof body === 'string' ? body : JSON.stringify(body),
@@ -52,19 +50,18 @@ test('rejects client system roles, invalid history, oversized and malformed bodi
   assert.equal(h.calls.fetch, 0);
 });
 
-test('injects authoritative knowledge, reads server secret, and returns noncached streaming SSE', async () => {
+test('injects authoritative knowledge, reads server secret, and returns noncached complete JSON', async () => {
   const h = harness(); const response = await h.POST(h.request());
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
-  assert.ok(response.headers.get('Content-Type').includes('text/event-stream'));
+  assert.ok(response.headers.get('Content-Type').includes('application/json'));
   assert.equal(h.calls.payload.model, 'llama-3.3-70b-versatile');
-  assert.equal(h.calls.payload.stream, true); assert.equal(h.calls.token, 'Bearer test-key');
+  assert.equal(h.calls.payload.stream, false); assert.equal(h.calls.token, 'Bearer test-key');
   assert.equal(h.calls.payload.messages[0].role, 'system');
   assert.ok(h.calls.payload.messages[0].content.includes('R50/month'));
   assert.ok(h.calls.payload.messages[0].content.includes('$700/year'));
   assert.ok(h.calls.payload.messages[0].content.includes('does not yet implement'));
-  let text = ''; for await (const chunk of helpers.readCoHostStream(response.body)) text += chunk;
-  assert.equal(text, 'Hello neighbour!');
+  assert.equal(await helpers.readCoHostResponse(response), 'Hello neighbour!');
 });
 
 test('missing configuration and provider failures give safe actionable status codes', async () => {
@@ -77,17 +74,29 @@ test('missing configuration and provider failures give safe actionable status co
   }
 });
 
-test('SSE handles split UTF-8, CRLF boundaries, multiple events and cancellation', async () => {
-  const bytes = encode(event('Hello 🌱') + event(' neighbour') + 'data: [DONE]\r\n\r\n');
-  let cancelled = false;
-  const stream = new ReadableStream({ start(controller) { for (const byte of bytes) controller.enqueue(new Uint8Array([byte])); }, cancel() { cancelled = true; } });
-  let text = ''; for await (const chunk of helpers.readCoHostStream(stream)) text += chunk;
-  assert.equal(text, 'Hello 🌱 neighbour'); assert.equal(cancelled, true);
+test('rejects malformed, empty, wrong-shape and truncated provider completions', async () => {
+  for (const providerBody of ['{broken', '{}', JSON.stringify({ content: 'wrong contract' }), ...['', '   ', 42].map(content => JSON.stringify({ choices: [{ message: { content }, finish_reason: 'stop' }] })), JSON.stringify({ choices: [{ message: { content: 'Partial' }, finish_reason: 'length' }] })]) {
+    const h = harness({ providerBody });
+    const response = await h.POST(h.request());
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: 'INVALID_PROVIDER_RESPONSE' });
+  }
 });
 
-test('SSE rejects truncated, provider-error and malformed responses', async () => {
-  for (const text of [event('Partial'), 'data: {broken}\n\n', 'data: {"error":"failed"}\n\n']) {
-    const stream = new ReadableStream({ start(controller) { controller.enqueue(encode(text)); controller.close(); } });
-    await assert.rejects(async () => { for await (const chunk of helpers.readCoHostStream(stream)) void chunk; });
+test('prefers Cloudflare binding and falls back when context is unavailable', async () => {
+  const binding = harness({ envKey: 'fallback' });
+  await binding.POST(binding.request()); assert.equal(binding.calls.token, 'Bearer test-key');
+  for (const options of [{ key: '', envKey: 'fallback' }, { contextFails: true, envKey: 'fallback' }]) {
+    const h = harness(options);
+    assert.equal((await h.POST(h.request())).status, 200);
+    assert.equal(h.calls.token, 'Bearer fallback');
   }
+});
+
+test('client accepts complete JSON and rejects legacy SSE and mismatched keys', async () => {
+  assert.equal(await helpers.readCoHostResponse(Response.json({ content: '  Hello ??  ' })), 'Hello ??');
+  for (const payload of [{ message: 'Hello' }, { reply: 'Hello' }, { content: '' }, { content: 42 }, null]) {
+    await assert.rejects(() => helpers.readCoHostResponse(Response.json(payload)));
+  }
+  await assert.rejects(() => helpers.readCoHostResponse(new Response('data: [DONE]\n\n')));
 });

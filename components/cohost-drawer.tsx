@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type SetStateAction, type FormEvent } from "react";
 import { Copy, Send, Sparkles, Trash2, X } from "lucide-react";
-import { readCoHostStream, type CoHostMessage } from "@/lib/cohost";
+import { readCoHostResponse, type CoHostMessage } from "@/lib/cohost";
 import styles from "./cohost-drawer.module.css";
 
 const CoHostContext = createContext<((prompt?: string) => void) | null>(null);
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current";
 const suggestions = ["Draft an introduction post", "Explain GreenSpace Hub", "Show membership tiers", "Ask about Zibuke OnCall"];
-type ChatEntry = CoHostMessage & { id: string; interrupted?: boolean };
+type ChatEntry = CoHostMessage & { id: string };
 
 export function useCoHost() {
   const open = useContext(CoHostContext);
@@ -75,26 +75,22 @@ export function CoHostDrawer({ open, onClose, draft, setDraft }: {
         body: JSON.stringify({ messages: [...context, { role: "user", content }] }), signal: controller.signal,
       });
       if (request.current !== controller) { await response.body?.cancel(); return; }
-      if (!response.ok || !response.body) {
+      if (!response.ok) {
         if (response.status === 401) { setUnauthorized(true); throw new Error("Sign in again to chat with your Co-Host."); }
         if (response.status === 429) throw new Error("Co-Host is busy. Please wait a moment and try again.");
         if (response.status === 400) throw new Error("Please shorten your message or clear the chat and try again.");
         throw new Error("Co-Host is unavailable right now. Please try again shortly.");
       }
-      for await (const text of readCoHostStream(response.body)) {
-        if (request.current !== controller) return;
-        reply += text;
-        setMessages(previous => previous.map(message => message.id === replyId ? { ...message, content: reply } : message));
-      }
+      reply = await readCoHostResponse(response);
       if (request.current !== controller) return;
-      if (!reply.trim()) throw new Error("Co-Host returned an empty reply. Please try again.");
+      setMessages(previous => previous.map(message => message.id === replyId ? { ...message, content: reply } : message));
       history.current = [...context, { role: "user", content }, { role: "assistant", content: reply.slice(0, 4000) }];
       setNotice("Response complete.");
     } catch (error) {
       if (request.current !== controller) return;
-      setMessages(previous => previous.map(message => message.id === replyId ? { ...message, content: reply || "No response received.", interrupted: true } : message));
+      setMessages(previous => previous.filter(message => message.id !== replyId));
       setDraft(content);
-      setNotice(controller.signal.aborted ? "Response stopped. Your message is ready to retry." : error instanceof Error && !error.message.startsWith("STREAM_") && !(error instanceof SyntaxError) ? error.message : "The response was interrupted. Your message is ready to retry.");
+      setNotice(controller.signal.aborted ? "Response stopped. Your message is ready to retry." : error instanceof Error && !(error instanceof SyntaxError) ? error.message : "Could not read the reply. Your message is ready to retry.");
     } finally {
       if (request.current === controller) { request.current = null; setPending(false); }
     }
@@ -113,7 +109,7 @@ export function CoHostDrawer({ open, onClose, draft, setDraft }: {
         <div className="flex flex-wrap gap-2">{suggestions.map(suggestion => <button key={suggestion} disabled={pending} onClick={() => void send(undefined, suggestion)} className={`rounded-full border border-black bg-white px-3 py-2 text-left text-xs font-semibold text-black hover:opacity-90 disabled:cursor-wait ${focus}`}>{suggestion}</button>)}</div>
         <div role="log" aria-label="Co-Host conversation" aria-live="off" className="mt-6 space-y-4">
           {messages.map(message => <article key={message.id} className={`rounded-2xl border border-black p-4 ${message.role === "user" ? "ml-6 bg-black text-[#ccff00]" : "mr-2 bg-white text-black"}`}>
-            <p className="mb-2 text-xs font-bold">{message.role === "user" ? "You" : "Zibuke Co-Host"}{message.interrupted ? " · Incomplete response" : ""}</p>
+            <p className="mb-2 text-xs font-bold">{message.role === "user" ? "You" : "Zibuke Co-Host"}</p>
             <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content || "Thinking…"}</p>
             {message.role === "assistant" && message.content && <button onClick={() => void copy(message.content)} className={`mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs font-bold text-black hover:opacity-90 ${focus}`}><Copy size={14} aria-hidden="true" />Copy text</button>}
           </article>)}
