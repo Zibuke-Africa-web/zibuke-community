@@ -2,6 +2,7 @@ name = "zibuke-community"
 main = ".open-next/worker.js"
 compatibility_date = "2026-09-28"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+routes = [{ pattern = "zibukecommunity.co.za", custom_domain = true }]
 
 [assets]
 directory = ".open-next/assets"
