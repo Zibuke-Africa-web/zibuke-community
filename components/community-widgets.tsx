@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Sparkles, MessageCircle } from "lucide-react";
 import { fallbackSpark, type DailySpark } from "@/lib/daily-spark";
+import { useCoHost } from "@/components/cohost-drawer";
 
 const friends = [
   { name: "Thandi Mokoena", initials: "TM", color: "bg-[#ccff00] text-black" },
@@ -19,6 +22,7 @@ function Avatar({ initials, small = false, color = "bg-[#ccff00] text-black" }: 
 }
 
 export function CommunityWidgets({ spark = fallbackSpark }: { spark?: DailySpark }) {
+  const openCoHost = useCoHost();
   return (
     <div className="space-y-5 bg-white text-black">
       {/* AI Insights Card */}
@@ -37,6 +41,9 @@ export function CommunityWidgets({ spark = fallbackSpark }: { spark?: DailySpark
           {spark.prompt}
         </div>
         <p className="mt-2 text-[10px] text-black">{spark.createdAt ? "AI-generated conversation starter" : "Curated conversation starter"}</p>
+        <button type="button" aria-haspopup="dialog" aria-controls="cohost-drawer" onClick={() => openCoHost()} className={`mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2 text-sm font-bold text-black hover:scale-[1.01] ${focus}`}>
+          <Sparkles size={16} aria-hidden="true" /> Open Co-Host
+        </button>
         <Link href={`/spaces/${spark.targetSpaceSlug}`} className={`mt-4 flex items-center gap-2 text-sm font-semibold text-black hover:opacity-90 ${focus}`}>
           Join today&apos;s conversation →
         </Link>

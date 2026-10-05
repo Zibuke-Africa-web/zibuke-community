@@ -1,0 +1,13 @@
+.drawer[open] {
+  animation: cohost-enter 180ms ease-out;
+}
+.drawer::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+@keyframes cohost-enter {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer[open] { animation: none; }
+}

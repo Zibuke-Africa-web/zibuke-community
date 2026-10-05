@@ -7,6 +7,7 @@ import { ArrowUpRight, Home, Menu, MessageCircle, Search, Sparkles, Users, X } f
 import { CommunityWidgets } from "@/components/community-widgets";
 import type { DailySpark } from "@/lib/daily-spark";
 import { PlatformNav } from "./platform-nav";
+import { CoHostProvider } from "@/components/cohost-drawer";
 
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current";
 
@@ -16,7 +17,7 @@ export function PlatformShell({ children, userId, userName, spark }: { children:
   const initials = userId ? userName.split(/\s+/).slice(0, 2).map(word => word[0]).join("") : "Y";
   const content = useRef<HTMLElement>(null);
   useEffect(() => { content.current?.scrollTo({ top: 0 }); }, [pathname]);
-  return <div className="h-dvh overflow-hidden bg-white font-sans text-black">
+  return <CoHostProvider><div className="h-dvh overflow-hidden bg-white font-sans text-black">
     <a href="#platform-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3">Skip to content</a>
     <header className="relative z-30 h-18 border-b border-slate-200 bg-white"><div className="mx-auto flex h-full max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:gap-8">
       <Link href="/feed" className={`flex shrink-0 items-center gap-2.5 ${focus}`} aria-label="Zibuke Community home"><span className="grid size-10 place-items-center rounded-xl bg-[#ccff00] text-2xl font-black text-black">z</span><span className="hidden sm:block"><span className="block text-xl leading-5 font-extrabold tracking-tight">zibuke<span className="text-black">.</span></span><span className="text-[9px] font-semibold tracking-[.2em] text-black uppercase">Community</span></span></Link>
@@ -29,7 +30,7 @@ export function PlatformShell({ children, userId, userName, spark }: { children:
       <aside aria-label="Community widgets" className="hidden h-full overflow-y-auto pt-7 pb-8 xl:block"><CommunityWidgets spark={spark} /></aside>
     </div>
     <MobileNavigation spark={spark} key={pathname} profileHref={profileHref} pathname={pathname} />
-  </div>;
+  </div></CoHostProvider>;
 }
 
 function MobileNavigation({ profileHref, pathname, spark }: { profileHref: string; pathname: string; spark: DailySpark }) {
