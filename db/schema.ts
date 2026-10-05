@@ -130,3 +130,28 @@ export const posts = sqliteTable("posts", {
     .default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(() => new Date()),
 });
+
+export const spaces = sqliteTable("spaces", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  tagline: text("tagline"),
+  description: text("description"),
+  icon: text("icon"),
+  privacy: text("privacy", { enum: ["public", "members_only", "private"] }).notNull().default("public"),
+  isFeatured: integer("is_featured").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  check("spaces_valid_privacy", sql`${table.privacy} in ('public', 'members_only', 'private')`),
+]);
+
+export const spaceMembers = sqliteTable("space_members", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  spaceId: text("space_id").notNull().references(() => spaces.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  joinedAt: integer("joined_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  uniqueIndex("space_members_space_user_unique").on(table.spaceId, table.userId),
+  index("space_members_user_idx").on(table.userId),
+]);
