@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { auth } from "@/auth";
-import { parseCoHostMessages } from "@/lib/cohost";
+import { compactCoHostMessages, coHostRetrySeconds, parseCoHostMessages } from "@/lib/cohost";
 import { COHOST_SYSTEM_PROMPT } from "@/lib/cohost-knowledge";
 
 // OpenNext does not support Next.js runtime="edge". This runs on Cloudflare Workers
@@ -45,12 +45,18 @@ export async function POST(request: Request) {
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...messages], stream: false, temperature: 0.6, max_completion_tokens: 900 }),
+      body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...compactCoHostMessages(messages)], stream: false, temperature: 0.6, max_completion_tokens: 512 }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(60000)]),
     });
     if (!upstream.ok) {
       await upstream.body?.cancel();
-      return Response.json({ error: upstream.status === 429 ? "RATE_LIMITED" : "COHOST_UNAVAILABLE" }, { status: upstream.status === 429 ? 429 : 502, headers });
+      if (upstream.status === 429) {
+        const retryAfter = coHostRetrySeconds(upstream.headers.get("retry-after"));
+        return Response.json({ error: "RATE_LIMITED", retryAfter }, {
+          status: 429, headers: { ...headers, "Retry-After": String(retryAfter) },
+        });
+      }
+      return Response.json({ error: "COHOST_UNAVAILABLE" }, { status: 502, headers });
     }
     const result = await upstream.json().catch(() => null) as { choices?: { message?: { content?: unknown }; finish_reason?: string }[] } | null;
     const content = result?.choices?.[0]?.message?.content;

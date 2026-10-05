@@ -1,5 +1,22 @@
 export type CoHostMessage = { role: "user" | "assistant"; content: string };
 
+// Retain at most two complete exchanges plus the current question.
+// Enforce this on the server too: callers need not use our drawer.
+export function compactCoHostMessages(messages: CoHostMessage[]): CoHostMessage[] {
+  let recent = messages.slice(-5);
+  while (recent.length > 1 && recent.reduce((size, message) => size + message.content.length, 0) > 6000) {
+    recent = recent.slice(2);
+  }
+  return recent;
+}
+
+export function coHostRetrySeconds(value: string | null, now = Date.now()): number {
+  if (!value?.trim()) return 60;
+  const seconds = /^\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : (Date.parse(value) - now) / 1000;
+  return Number.isFinite(seconds) && seconds >= 0 && seconds < Number.MAX_SAFE_INTEGER / 1000
+    ? Math.max(1, Math.ceil(seconds)) : 60;
+}
+
 export function parseCoHostMessages(value: unknown): CoHostMessage[] | null {
   if (!value || typeof value !== "object" || !("messages" in value) || !Array.isArray(value.messages)) return null;
   if (!value.messages.length || value.messages.length > 20) return null;

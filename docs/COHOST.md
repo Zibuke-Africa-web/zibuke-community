@@ -22,9 +22,15 @@ depend on the Groq account; this implementation does not assume unlimited free u
 `POST /api/cohost/chat` requires an existing authenticated session. It accepts only
 alternating user/assistant messages ending with a user message. Client system roles
 are rejected. Requests are limited to 64 KiB, 20 messages, 4,000 characters per message
-and 16,000 characters of combined history. Replies use `llama-3.3-70b-versatile`,
-900 output tokens, non-streaming `{ content: string }` responses, and a 60-second timeout, with user cancellation propagated upstream.
-Provider rate-limit errors receive a retry notice; credentials and upstream error
+and 16,000 characters of combined history. Replies use `llama-3.1-8b-instant`,
+512 output tokens, non-streaming `{ content: string }` responses, and a 60-second timeout, with user cancellation propagated upstream.
+Only the last two complete exchanges and the current question are sent to Groq,
+within a 6,000-character conversation budget. Older exchanges are dropped as pairs.
+Provider HTTP 429 responses forward Retry-After (60 seconds when absent/invalid).
+The drawer preserves the draft and disables sending and suggestion chips during
+the countdown, including after Clear Chat or closing/reopening the drawer. No
+automatic retries consume extra quota. This is a page-session cooldown, not a
+global account quota guarantee. Provider rate-limit errors receive a retry notice; credentials and upstream error
 bodies are never returned to the client. Configure account quotas or Cloudflare
 rate-limiting rules for your traffic requirements; no per-user persistent quota is added.
 
