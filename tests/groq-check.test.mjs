@@ -9,11 +9,15 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
+const configContext = { exports: {}, process: { env: {} } };
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/groq-config.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, configContext);
+
 function harness({ key = 'private-test-key', fallback = '', contextFails = false, status = 200, body = { choices: [{ message: { content: 'pong' } }] }, throws = false, malformed = false } = {}) {
   const calls = [];
   let contextCalls = 0;
   const context = { exports: {}, URL, AbortSignal, Error, process: { env: { GROQ_API_KEY: fallback } },
     require: name => {
+      if (name === '@/lib/groq-config') return configContext.exports;
       if (name === 'next/server') return { NextResponse: Response };
       assert.equal(name, '@opennextjs/cloudflare');
       return { getCloudflareContext: async options => {
@@ -58,11 +62,11 @@ test('sends a native text ping with the Cloudflare key and returns the requested
   assert.ok(response.headers.get('cache-control').includes('no-store'));
   const data = await response.json();
   assert.equal(data.ok, true); assert.equal(data.maskedKey, 'privat...-key');
-  assert.equal(data.hasCloudflareAi, true); assert.equal(data.model, 'llama-3.1-8b-instant');
+  assert.equal(data.hasCloudflareAi, true); assert.equal(data.model, 'openai/gpt-oss-20b');
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(h.calls[0].headers.Authorization, 'Bearer private-test-key');
-  assert.deepEqual(JSON.parse(h.calls[0].body), { model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 });
+  assert.deepEqual(JSON.parse(h.calls[0].body), { model: 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'ping' }], max_completion_tokens: 512, reasoning_effort: 'low' });
 });
 
 test('falls back for absent binding and failed context lookup', async () => {
@@ -115,7 +119,7 @@ async function runScript(body, status = 200) {
 }
 
 test('script understands HTTP 200 failures and does not print diagnostic payloads or claim vision success', async () => {
-  const success = await runScript({ ok: true, model: 'llama-3.1-8b-instant', maskedKey: 'private-value' });
+  const success = await runScript({ ok: true, model: 'openai/gpt-oss-20b', maskedKey: 'private-value' });
   assert.equal(success.process.exitCode, undefined);
   assert.ok(success.logs.some(line => line.includes('PASS')));
   assert.ok(success.logs.some(line => line.includes('Vision inference: not checked')));

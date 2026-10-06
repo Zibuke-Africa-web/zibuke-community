@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { auth } from "@/auth";
 import { BOTANIST_SYSTEM_PROMPT, parseBotanistInput, parseBotanistReply } from "@/lib/botanist";
+import { groqModels, groqReasoningOptions } from "@/lib/groq-config";
 
 // OpenNext runs this on Cloudflare Workers; Next.js's edge runtime is unsupported.
 export const runtime = "nodejs";
@@ -47,12 +48,14 @@ export async function POST(request: Request) {
     const cf = await getCloudflareContext({ async: true }).catch(() => null);
     const apiKey = cf?.env.GROQ_API_KEY || process.env.GROQ_API_KEY;
     if (!apiKey) return fail("The Botanist is not configured yet. Please try again later.", 503);
+    const models = groqModels(cf?.env);
+    const model = input.imageBase64 ? models.vision : models.text;
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       redirect: "follow",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: input.imageBase64 ? "qwen/qwen3.8-27b" : "llama-3.1-8b-instant",
+        model, ...groqReasoningOptions(model),
         messages: [
           { role: "system", content: BOTANIST_SYSTEM_PROMPT },
           { role: "user", content: input.imageBase64 ? [

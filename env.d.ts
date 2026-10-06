@@ -1,5 +1,7 @@
 interface CloudflareEnv {
   GROQ_API_KEY?: string;
+  GROQ_TEXT_MODEL?: string;
+  GROQ_VISION_MODEL?: string;
   AI: Ai;
   CRON_SECRET: string;
   AUTH_SECRET: string;

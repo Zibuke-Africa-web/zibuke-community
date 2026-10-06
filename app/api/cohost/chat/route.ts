@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { auth } from "@/auth";
 import { compactCoHostMessages, coHostRetrySeconds, parseCoHostMessages } from "@/lib/cohost";
 import { COHOST_SYSTEM_PROMPT } from "@/lib/cohost-knowledge";
+import { groqModels, groqReasoningOptions } from "@/lib/groq-config";
 
 // OpenNext does not support Next.js runtime="edge". This runs on Cloudflare Workers
 // using only fetch/Web Streams; no Node.js AI SDK or socket dependencies.
@@ -42,11 +43,12 @@ export async function POST(request: Request) {
     const cf = await getCloudflareContext({ async: true }).catch(() => null);
     const apiKey = cf?.env.GROQ_API_KEY || process.env.GROQ_API_KEY;
     if (!apiKey) return Response.json({ error: "COHOST_NOT_CONFIGURED" }, { status: 503, headers });
+    const model = groqModels(cf?.env).text;
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       redirect: "follow",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...compactCoHostMessages(messages)], stream: false, temperature: 0.6, max_completion_tokens: 512 }),
+      body: JSON.stringify({ model, ...groqReasoningOptions(model), messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...compactCoHostMessages(messages)], stream: false, temperature: 0.6, max_completion_tokens: 2048 }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(60000)]),
     });
     if (!upstream.ok) {

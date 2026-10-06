@@ -13,6 +13,7 @@ function load(file, modules = {}, globals = {}) {
   vm.runInNewContext(source, context);
   return context.exports;
 }
+const groqConfig = load('../lib/groq-config.ts', {}, { process: { env: {} } });
 const helpers = load('../lib/botanist.ts');
 const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
@@ -21,6 +22,7 @@ function harness({ session = { user: { id: 'member' } }, key = 'test-key', fallb
   const calls = [];
   const route = load('../app/api/botanist/diagnose/route.ts', {
     '@/lib/botanist': helpers, '@/auth': { auth: async () => session },
+    '@/lib/groq-config': groqConfig,
     '@opennextjs/cloudflare': { getCloudflareContext: async options => {
       assert.equal(options.async, true);
       if (contextFails) throw new Error('No context');
@@ -53,7 +55,7 @@ test('text diagnosis uses text model and appends the exact trusted service hando
   const data = await response.json();
   assert.equal(data.isServiceRecommended, true);
   assert.ok(data.reply.endsWith(helpers.ONCALL_TRIGGER));
-  assert.equal(h.calls[0].payload.model, 'llama-3.1-8b-instant');
+  assert.equal(h.calls[0].payload.model, 'openai/gpt-oss-20b');
   assert.equal(h.calls[0].headers.Authorization, 'Bearer test-key');
   assert.equal(h.calls[0].payload.messages[0].content, helpers.BOTANIST_SYSTEM_PROMPT);
 });

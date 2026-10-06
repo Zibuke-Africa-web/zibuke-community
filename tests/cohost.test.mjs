@@ -12,12 +12,14 @@ function load(file, modules = {}, globals = {}) {
   } };
   vm.runInNewContext(source, context); return context.exports;
 }
+const groqConfig = load('../lib/groq-config.ts', {}, { process: { env: {} } });
 const helpers = load('../lib/cohost.ts');
 const knowledge = load('../lib/cohost-knowledge.ts');
 
 function harness({ session = { user: { id: 'member' } }, key = 'test-key', status = 200, providerBody = JSON.stringify({ choices: [{ message: { content: 'Hello neighbour!' }, finish_reason: 'stop' }] }), envKey = '', contextFails = false, retryAfter = null } = {}) {
   const calls = { fetch: 0, context: 0, payload: null, token: null };
   const route = load('../app/api/cohost/chat/route.ts', {
+    '@/lib/groq-config': groqConfig,
     '@opennextjs/cloudflare': { getCloudflareContext: async options => { assert.equal(options.async, true); calls.context++; if (contextFails) throw new Error('No context'); return { env: { GROQ_API_KEY: key } }; } },
     '@/auth': { auth: async () => session }, '@/lib/cohost': helpers, '@/lib/cohost-knowledge': knowledge,
   }, { process: { env: { GROQ_API_KEY: envKey } }, fetch: async (url, options) => {
@@ -55,8 +57,8 @@ test('injects authoritative knowledge, reads server secret, and returns noncache
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.ok(response.headers.get('Content-Type').includes('application/json'));
-  assert.equal(h.calls.payload.model, 'llama-3.1-8b-instant');
-  assert.equal(h.calls.payload.max_completion_tokens, 512);
+  assert.equal(h.calls.payload.model, 'openai/gpt-oss-20b');
+  assert.equal(h.calls.payload.max_completion_tokens, 2048);
   assert.equal(h.calls.payload.stream, false); assert.equal(h.calls.token, 'Bearer test-key');
   assert.equal(h.calls.payload.messages[0].role, 'system');
   assert.ok(h.calls.payload.messages[0].content.includes('R50/month'));
