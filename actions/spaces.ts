@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { posts, spaceMembers, spaces, users } from "@/db/schema";
 import { normalizeSpaceContent, safeSpaceMedia, validSpaceId } from "@/lib/space-post-input";
 import type { SpaceDetails, SpacePost, SpaceResult } from "@/lib/space-types";
+import { recordActivity } from "@/lib/gamification";
 
 async function database() {
   const { env } = await getCloudflareContext({ async: true });
@@ -15,6 +16,11 @@ async function database() {
 }
 
 type SpaceDb = Awaited<ReturnType<typeof database>>;
+
+function paidAccess(userId?: string) {
+  return sql`(spaces.is_paywalled=0 or exists(select 1 from subscriptions sub where sub.user_id=${userId || ""}
+    and sub.space_slug=spaces.slug and sub.status in ('active','canceled') and sub.current_period_end>unixepoch()))`;
+}
 
 function memberExists(userId: string | undefined) {
   // Literal qualified identifiers preserve correlation when Drizzle maps SELECT fields.
@@ -27,6 +33,7 @@ async function lookup(db: SpaceDb, spaceId: string, userId?: string) {
   const [space] = await db.select({
     id: spaces.id, slug: spaces.slug, privacy: spaces.privacy,
     isMember: memberExists(userId).mapWith(Boolean),
+    paidAccess: paidAccess(userId).mapWith(Boolean),
   }).from(spaces).where(eq(spaces.id, spaceId)).limit(1);
   return space;
 }
@@ -45,10 +52,11 @@ export async function joinSpaceAction(spaceId: string): Promise<SpaceResult<null
     const space = await lookup(db, spaceId, session.user.id);
     if (!space || (space.privacy === "private" && !space.isMember)) return { success: false, error: "NOT_FOUND" };
     if (!space.isMember) {
+      if (!space.paidAccess) return { success: false, error: "SUBSCRIPTION_REQUIRED" };
       // Recheck privacy at insertion time; the unique index handles concurrent joins.
       const inserted = await db.all<{ id: string }>(sql`insert into space_members (id, space_id, user_id, role)
         select ${crypto.randomUUID()}, ${spaces.id}, ${session.user.id}, 'member' from ${spaces}
-        where ${spaces.id} = ${spaceId} and ${spaces.privacy} in ('public', 'members_only')
+        where ${spaces.id} = ${spaceId} and ${spaces.privacy} in ('public', 'members_only') and ${paidAccess(session.user.id)}
         on conflict (space_id, user_id) do nothing returning id`);
       if (!inserted.length && !(await lookup(db, spaceId, session.user.id))?.isMember) return { success: false, error: "FORBIDDEN" };
     }
@@ -90,12 +98,14 @@ export async function createSpacePostAction(spaceId: string, content: string, me
     const space = await lookup(db, spaceId, session.user.id);
     if (!space || (space.privacy === "private" && !space.isMember)) return { success: false, error: "NOT_FOUND" };
     if (!space.isMember) return { success: false, error: "MEMBERSHIP_REQUIRED" };
+    if (!space.paidAccess) return { success: false, error: "SUBSCRIPTION_REQUIRED" };
     const id = crypto.randomUUID();
     // INSERT SELECT makes membership validation atomic with publishing on D1.
     const inserted = await db.all<{ id: string }>(sql`insert into posts (id, user_id, space_id, content, media_url)
       select ${id}, ${session.user.id}, ${spaces.id}, ${normalized}, ${media} from ${spaces}
-      where ${spaces.id} = ${spaceId} and ${memberExists(session.user.id)} returning id`);
+      where ${spaces.id} = ${spaceId} and ${memberExists(session.user.id)} and ${paidAccess(session.user.id)} returning id`);
     if (!inserted.length) return { success: false, error: "MEMBERSHIP_REQUIRED" };
+    await recordActivity(session.user.id).catch(() => {});
     refreshSpace(space.slug);
     return { success: true, data: { id } };
   } catch { return { success: false, error: "UNAVAILABLE" }; }
@@ -128,12 +138,13 @@ export async function getSpacePosts(spaceId: string): Promise<SpaceResult<SpaceP
     const space = await lookup(db, spaceId, userId);
     if (!space || (space.privacy === "private" && !space.isMember)) return { success: false, error: "NOT_FOUND" };
     if (space.privacy !== "public" && !space.isMember) return { success: false, error: userId ? "MEMBERSHIP_REQUIRED" : "UNAUTHORIZED" };
+    if (!space.paidAccess) return { success: false, error: "SUBSCRIPTION_REQUIRED" };
     const rows = await db.select({
       id: posts.id, content: posts.content, mediaUrl: posts.mediaUrl, createdAt: posts.createdAt,
       authorId: users.id, authorName: users.name,
       authorImage: sql<string | null>`coalesce(${users.profilePhotoUrl}, ${users.image}, ${users.avatarUrl})`,
     }).from(posts).innerJoin(users, eq(posts.userId, users.id)).innerJoin(spaces, eq(posts.spaceId, spaces.id))
-      .where(and(eq(posts.spaceId, spaceId), or(eq(spaces.privacy, "public"), memberExists(userId))))
+      .where(and(eq(posts.spaceId, spaceId), paidAccess(userId), or(eq(spaces.privacy, "public"), memberExists(userId))))
       .orderBy(desc(posts.createdAt), desc(posts.id)).limit(50);
     return { success: true, data: rows.map(row => {
       const name = row.authorName?.trim() || "Community member";

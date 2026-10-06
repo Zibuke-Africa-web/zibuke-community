@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { auth } from "@/auth";
 import { BOTANIST_SYSTEM_PROMPT, parseBotanistInput, parseBotanistReply } from "@/lib/botanist";
 import { groqModels, groqReasoningOptions } from "@/lib/groq-config";
+import { getSpaceAccess } from "@/lib/space-access";
 
 // OpenNext runs this on Cloudflare Workers; Next.js's edge runtime is unsupported.
 export const runtime = "nodejs";
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) return fail("Sign in to use the Botanist AI Agent.", 401);
+    if (!(await getSpaceAccess("greenspace-hub", session.user.id)).allowed) return fail("An active GreenSpace Hub membership is required.", 403);
     let input: ReturnType<typeof parseBotanistInput>;
     try { input = await readInput(request); }
     catch (error) {
@@ -77,7 +79,8 @@ export async function POST(request: Request) {
       const data = await upstream.json() as { choices?: { message?: { content?: unknown }; finish_reason?: string }[] };
       const choice = data.choices?.[0];
       if (choice?.finish_reason !== "stop" || typeof choice.message?.content !== "string") throw new Error("Incomplete diagnosis");
-      return Response.json(parseBotanistReply(choice.message.content), { headers });
+      const diagnosis = parseBotanistReply(choice.message.content);
+      return Response.json({ analysis: diagnosis.reply, requiresPhysicalService: diagnosis.isServiceRecommended }, { headers });
     } catch { return fail("The diagnosis was incomplete. Please try again.", 502); }
   } catch (error) {
     if (error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name)) return fail("The diagnosis timed out. Please try again.", 504);

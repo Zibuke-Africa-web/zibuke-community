@@ -17,10 +17,11 @@ const groqConfig = load('../lib/groq-config.ts', {}, { process: { env: {} } });
 const helpers = load('../lib/botanist.ts');
 const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
-function harness({ session = { user: { id: 'member' } }, key = 'test-key', fallback = '', contextFails = false,
+function harness({ allowed = true, session = { user: { id: 'member' } }, key = 'test-key', fallback = '', contextFails = false,
   status = 200, reply = { reply: 'Likely compacted lawn. Arrange dethatching.', isServiceRecommended: true }, finish = 'stop', throws = false } = {}) {
   const calls = [];
   const route = load('../app/api/botanist/diagnose/route.ts', {
+    '@/lib/space-access': { getSpaceAccess: async () => ({ allowed }) },
     '@/lib/botanist': helpers, '@/auth': { auth: async () => session },
     '@/lib/groq-config': groqConfig,
     '@opennextjs/cloudflare': { getCloudflareContext: async options => {
@@ -53,8 +54,8 @@ test('text diagnosis uses text model and appends the exact trusted service hando
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   const data = await response.json();
-  assert.equal(data.isServiceRecommended, true);
-  assert.ok(data.reply.endsWith(helpers.ONCALL_TRIGGER));
+  assert.equal(data.requiresPhysicalService, true);
+  assert.ok(data.analysis.endsWith(helpers.ONCALL_TRIGGER));
   assert.equal(h.calls[0].payload.model, 'openai/gpt-oss-20b');
   assert.equal(h.calls[0].headers.Authorization, 'Bearer test-key');
   assert.equal(h.calls[0].payload.messages[0].content, helpers.BOTANIST_SYSTEM_PROMPT);
@@ -68,7 +69,7 @@ test('JSON and multipart photos reach vision intact; routine advice has no booki
     Object.entries(input).forEach(([key, value]) => form.set(key, value));
     const response = await h.POST(h.request(multipart ? form : input));
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { reply: 'Check drainage first.', isServiceRecommended: false });
+    assert.deepEqual(await response.json(), { analysis: 'Check drainage first.', requiresPhysicalService: false });
     assert.equal(h.calls[0].payload.model, 'qwen/qwen3.8-27b');
     assert.equal(h.calls[0].payload.messages[1].content[1].image_url.url, photo);
   }
@@ -107,3 +108,5 @@ test('handles provider limits, malformed output, truncation and timeouts safely'
     assert.ok(!(await response.text()).includes('private provider details'));
   }
 });
+
+test('a signed-in member cannot bypass GreenSpace subscription gating via the API', async () => { const h = harness({ allowed: false }); assert.equal((await h.POST(h.request())).status, 403); assert.equal(h.calls.length, 0); });

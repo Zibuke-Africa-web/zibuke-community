@@ -26,6 +26,7 @@ function setup(t) {
   }
   sqlite.exec("PRAGMA foreign_keys = ON; INSERT INTO users(id,name) VALUES ('alice','Alice Member'),('bob','Bob Member'); INSERT INTO posts(id,user_id,content) VALUES ('legacy','alice','Keep the existing feed');");
   sqlite.exec(readFileSync(new URL('../drizzle/0004_space_posts.sql', import.meta.url), 'utf8'));
+  sqlite.exec(readFileSync(new URL('../drizzle/0006_cooing_bruce_banner.sql', import.meta.url), 'utf8'));
   sqlite.exec(readFileSync(new URL('../db/seed-spaces.sql', import.meta.url), 'utf8'));
   sqlite.exec("INSERT INTO spaces(id,slug,name,privacy) VALUES ('secret','secret','Secret','private')");
   let user = 'alice';
@@ -50,6 +51,7 @@ function setup(t) {
   };
   const actions = load('../actions/spaces.ts', {
     '@/auth': { auth: async () => user ? { user: { id: user } } : null },
+    '@/lib/gamification': { recordActivity: async () => {} },
     '@/db/schema': schema,
     '@/lib/space-post-input': input,
     '@opennextjs/cloudflare': { getCloudflareContext: async options => {

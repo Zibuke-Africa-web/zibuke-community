@@ -13,6 +13,7 @@ import { SpaceIcon } from "./views";
 const button = "inline-flex items-center justify-center rounded-full bg-[#ccff00] px-5 py-3 font-bold text-black transition-transform hover:scale-[1.01] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current disabled:cursor-not-allowed";
 const field = "mt-3 w-full rounded-xl border border-slate-200 bg-white p-4 text-black placeholder:text-black focus-visible:outline-2 focus-visible:outline-black";
 const messages: Record<SpaceError, string> = {
+  SUBSCRIPTION_REQUIRED: "Choose a membership plan to access this space.",
   UNAUTHORIZED: "Sign in to join a space or publish a post.",
   NOT_FOUND: "This space is unavailable or you no longer have access.",
   FORBIDDEN: "This space is invitation only.",

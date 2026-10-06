@@ -163,8 +163,8 @@ community widgets, and mobile menu. `platform-nav.tsx` is the shared source for
 the seven primary links and uses `usePathname()` for active states. The profile
 link resolves from the server session; `/profile` redirects to the current user.
 Feed and profile pages contain content only. Admin pages retain their access
-check and local admin tabs inside the same shell. Events currently has a coming-soon
-page; Settings links to the existing profile editors, and Friends lists accepted connections.
+check and local admin tabs inside the same shell. Events provides D1-backed workshops and RSVPs;
+Settings links to the existing profile editors, and Friends lists accepted connections.
 
 `/profile/[id]` loads a member, their accepted connections in either direction,
 and their public posts from D1. The post list is paginated, and private or hidden
@@ -196,3 +196,5 @@ Add a repository Actions secret named `CLOUDFLARE_API_TOKEN`, scoped to the prod
 
 
 Use either this GitHub Actions workflow or Cloudflare Workers Builds as the deployment trigger to avoid deploying every commit twice.
+
+Community events, the local directory, contribution streaks, paid memberships and the Botanist widget are documented in [Community features](docs/community-features.md). Read [Payment setup](docs/payments.md) before enabling merchant checkout or recurring billing.

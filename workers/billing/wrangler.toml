@@ -1,0 +1,10 @@
+name = "zibuke-billing-scheduler"
+main = "worker.ts"
+compatibility_date = "2026-09-28"
+workers_dev = false
+[triggers]
+crons = ["*/15 * * * *"]
+[[services]]
+binding = "COMMUNITY"
+service = "zibuke-community"
+# Set CRON_SECRET to the same secret as the main Worker before enabling billing.

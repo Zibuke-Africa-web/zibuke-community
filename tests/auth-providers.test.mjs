@@ -15,6 +15,7 @@ const source = ts.transpileModule(readFileSync(new URL('../auth.ts', import.meta
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const modules = {
+  '@/lib/gamification': { recordActivity: async () => {} },
   'next-auth': { default: callback => { factory = callback; return {}; } },
   '@auth/drizzle-adapter': { DrizzleAdapter: (_db, tables) => ({ tables }) },
   '@opennextjs/cloudflare': { getCloudflareContext: async options => { assert.equal(options.async, true); return { env }; } },

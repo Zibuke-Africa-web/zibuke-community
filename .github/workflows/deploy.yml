@@ -37,8 +37,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Verify Groq routes in Node and workerd
-        run: node --test tests/groq-check.test.mjs tests/cohost.test.mjs tests/botanist.test.mjs tests/groq-workerd.test.mjs
+      - name: Verify community features and Groq routes in Node and workerd
+        run: node --test tests/*.test.mjs
 
       - name: Build OpenNext Worker
         run: npm run build:cloudflare

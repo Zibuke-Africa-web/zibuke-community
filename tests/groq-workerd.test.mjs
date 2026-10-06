@@ -24,8 +24,9 @@ test('all three Groq handlers execute using real workerd fetch', { timeout: 6000
     bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022',
     define: { 'process.env': '{}' },
     plugins: [{ name: 'test-context', setup(builder) {
-      builder.onResolve({ filter: /^(@opennextjs\/cloudflare|@\/auth|next\/server)$/ }, args => ({ path: args.path, namespace: 'test-context' }));
+      builder.onResolve({ filter: /^(@opennextjs\/cloudflare|@\/auth|@\/lib\/space-access|next\/server)$/ }, args => ({ path: args.path, namespace: 'test-context' }));
       builder.onLoad({ filter: /.*/, namespace: 'test-context' }, args => ({ contents:
+        args.path === '@/lib/space-access' ? 'export async function getSpaceAccess() { return { allowed: true }; }' :
         args.path === '@/auth' ? 'export async function auth() { return { user: { id: "test-member" } }; }' :
         args.path === 'next/server' ? 'export const NextResponse = Response;' :
         'export async function getCloudflareContext() { return { env: globalThis.testEnv }; }', loader: 'js' }));

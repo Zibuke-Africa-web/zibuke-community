@@ -30,7 +30,7 @@ export async function generateDailySpark(env: SparkEnvironment, now = new Date()
     .leftJoin(spaces, eq(posts.spaceId, spaces.id)).leftJoin(groups, eq(posts.groupId, groups.id))
     .where(and(gte(posts.createdAt, new Date(now.getTime() - 48 * 60 * 60 * 1000)), lte(posts.createdAt, now),
       ne(posts.userId, SYSTEM_USER),
-      or(isNull(posts.spaceId), eq(spaces.privacy, "public")),
+      or(isNull(posts.spaceId), and(eq(spaces.privacy, "public"), eq(spaces.isPaywalled, false))),
       or(isNull(posts.groupId), and(eq(groups.privacy, "public"), eq(groups.visibility, "visible")))))
     .orderBy(desc(posts.createdAt)).limit(30);
   // Send aggregate topics, not raw posts or identities, to Workers AI.

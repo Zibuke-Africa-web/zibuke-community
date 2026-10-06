@@ -7,6 +7,7 @@ import LinkedIn from "next-auth/providers/linkedin";
 import Resend from "next-auth/providers/resend";
 import { getDb } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
+import { recordActivity } from "@/lib/gamification";
 
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
@@ -17,6 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     secret: env.AUTH_SECRET,
     pages: { signIn: "/login", error: "/login" },
     session: { strategy: "database" },
+    events: { async signIn({ user }) { if (user.id) await recordActivity(user.id).catch(() => {}); } },
     adapter: DrizzleAdapter(db, {
       usersTable: users,
       accountsTable: accounts,

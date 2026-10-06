@@ -1,4 +1,4 @@
-export type SpaceError = "UNAUTHORIZED" | "NOT_FOUND" | "FORBIDDEN" | "MEMBERSHIP_REQUIRED" | "INVALID_INPUT" | "INVALID_CONTENT" | "INVALID_MEDIA" | "HOST_MEMBERSHIP" | "UNAVAILABLE";
+export type SpaceError = "UNAUTHORIZED" | "NOT_FOUND" | "FORBIDDEN" | "MEMBERSHIP_REQUIRED" | "SUBSCRIPTION_REQUIRED" | "INVALID_INPUT" | "INVALID_CONTENT" | "INVALID_MEDIA" | "HOST_MEMBERSHIP" | "UNAVAILABLE";
 export type SpaceResult<T> = { success: true; data: T } | { success: false; error: SpaceError };
 export type SpaceDetails = {
   id: string; slug: string; name: string; tagline: string | null; description: string | null;

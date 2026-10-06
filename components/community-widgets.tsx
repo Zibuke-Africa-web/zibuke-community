@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Sparkles, MessageCircle } from "lucide-react";
 import { fallbackSpark, type DailySpark } from "@/lib/daily-spark";
 import { useCoHost } from "@/components/cohost-drawer";
+import { LeaderboardWidget } from "@/components/leaderboard-widget";
+import type { Champion } from "@/lib/community";
 
 const friends = [
   { name: "Thandi Mokoena", initials: "TM", color: "bg-[#ccff00] text-black" },
@@ -21,7 +23,7 @@ function Avatar({ initials, small = false, color = "bg-[#ccff00] text-black" }: 
   );
 }
 
-export function CommunityWidgets({ spark = fallbackSpark }: { spark?: DailySpark }) {
+export function CommunityWidgets({ spark = fallbackSpark, champions = [] }: { spark?: DailySpark; champions?: Champion[] }) {
   const openCoHost = useCoHost();
   return (
     <div className="space-y-5 bg-white text-black">
@@ -49,6 +51,7 @@ export function CommunityWidgets({ spark = fallbackSpark }: { spark?: DailySpark
         </Link>
       </section>
 
+      <LeaderboardWidget members={champions} />
       {/* Sponsored Ad - Zibuke OnCall */}
       <section aria-labelledby="sponsored-title">
         <div className="mb-3 flex justify-between">

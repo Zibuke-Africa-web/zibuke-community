@@ -27,6 +27,7 @@ function harness(t) {
   sqlite.prepare('INSERT INTO posts(id,user_id,space_id,group_id,content,created_at) VALUES (?,?,?,?,?,?)').run('public','alice','space-welcome',null,'Welcome! Contact alice@example.com to build a garden.',stamp-100);
   sqlite.prepare('INSERT INTO posts(id,user_id,space_id,group_id,content,created_at) VALUES (?,?,?,?,?,?)').run('private','alice','space-creators',null,'Secret business project',stamp-100);
   sqlite.prepare('INSERT INTO posts(id,user_id,space_id,group_id,content,created_at) VALUES (?,?,?,?,?,?)').run('group','alice',null,'private-group','Hidden business project',stamp-100);
+  sqlite.prepare("INSERT INTO posts(id,user_id,space_id,content,created_at) SELECT 'paid','alice',id,'Paid business project',? FROM spaces WHERE slug='greenspace-hub'").run(stamp-100);
   let broken = false, response = { response: JSON.stringify(answer) }, aiCalls = 0, input;
   let queue = Promise.resolve();
   const d1 = {

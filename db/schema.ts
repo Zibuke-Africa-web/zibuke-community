@@ -229,9 +229,13 @@ export const paymentOrders = sqliteTable("payment_orders", {
   billingCycle: text("billing_cycle", { enum: ["monthly", "annual"] }).notNull(),
   amountCents: integer("amount_cents").notNull(), currency: text("currency").notNull(),
   providerId: text("provider_id"), checkoutUrl: text("checkout_url"),
-  status: text("status", { enum: ["pending", "paid", "failed"] }).notNull().default("pending"),
+  renewalSubscriptionId: text("renewal_subscription_id").references(() => subscriptions.id),
+  periodEnd: integer("period_end", { mode: "timestamp" }),
+  status: text("status", { enum: ["pending", "paid", "failed", "refunded"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-}, table => [uniqueIndex("payment_orders_provider_unique").on(table.gateway, table.providerId), index("payment_orders_user_idx").on(table.userId, table.createdAt)]);
+}, table => [uniqueIndex("payment_orders_provider_unique").on(table.gateway, table.providerId), index("payment_orders_user_idx").on(table.userId, table.createdAt),
+  uniqueIndex("payment_orders_pending_unique").on(table.userId, table.spaceSlug).where(sql`${table.status}='pending' and ${table.renewalSubscriptionId} is null`),
+]);
 
 export const paymentReceipts = sqliteTable("payment_receipts", {
   id: text("id").primaryKey(), // gateway + transaction ID, not delivery ID
