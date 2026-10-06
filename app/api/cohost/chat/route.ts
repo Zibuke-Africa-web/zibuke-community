@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     if (!apiKey) return Response.json({ error: "COHOST_NOT_CONFIGURED" }, { status: 503, headers });
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
+      redirect: "follow",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "system", content: COHOST_SYSTEM_PROMPT }, ...compactCoHostMessages(messages)], stream: false, temperature: 0.6, max_completion_tokens: 512 }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(60000)]),

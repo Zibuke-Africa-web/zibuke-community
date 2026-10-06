@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     if (!apiKey) return fail("The Botanist is not configured yet. Please try again later.", 503);
     const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
+      redirect: "follow",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: input.imageBase64 ? "qwen/qwen3.8-27b" : "llama-3.1-8b-instant",

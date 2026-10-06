@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         max_tokens: 5,
       }),
       cache: "no-store",
-      redirect: "error",
+      redirect: "follow",
       signal: AbortSignal.any([req.signal, AbortSignal.timeout(30000)]),
     });
 
