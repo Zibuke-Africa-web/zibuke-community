@@ -12,6 +12,11 @@ import { recordActivity } from "@/lib/gamification";
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
   const { env } = await getCloudflareContext({ async: true });
+  const emailEnv = env as typeof env & { EMAIL_FROM?: string; RESEND_API_KEY?: string };
+  // Cloudflare bindings are authoritative; .dev.vars is not a Next.js .env file.
+  const configuredFrom = (emailEnv.EMAIL_FROM || process.env.EMAIL_FROM || "").trim();
+  const emailFrom = (configuredFrom || "Zibuke Community <noreply@zibukeafrica.com>")
+    .replace(/^([^<>]+?)\s+([^\s<>]+@[^\s<>]+)$/, "$1 <$2>");
 
   return {
     trustHost: true,
@@ -38,18 +43,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
         clientSecret: env.AUTH_FACEBOOK_SECRET as string,
       }),
       Google({
-        clientId: env.AUTH_GOOGLE_ID as string,
-        clientSecret: env.AUTH_GOOGLE_SECRET as string,
+        clientId: process.env.AUTH_GOOGLE_ID || "508155139796-t8tsrimj6o873k41gods9eskauuqkv75.apps.googleusercontent.com",
+        clientSecret: process.env.AUTH_GOOGLE_SECRET,
+        allowDangerousEmailAccountLinking: true,
       }),
       LinkedIn({
-        clientId: env.AUTH_LINKEDIN_ID as string,
-        clientSecret: env.AUTH_LINKEDIN_SECRET as string,
+        clientId: process.env.AUTH_LINKEDIN_ID || "78gaenvt8cg1i0",
+        clientSecret: process.env.AUTH_LINKEDIN_SECRET,
+        allowDangerousEmailAccountLinking: true,
         authorization: { params: { scope: "openid profile email" } },
       }),
-      // The built-in Resend provider sends via HTTPS fetch, not SMTP sockets.
       Resend({
-        apiKey: env.AUTH_RESEND_KEY as string,
-        from: env.AUTH_RESEND_FROM as string,
+        apiKey: emailEnv.AUTH_RESEND_KEY || emailEnv.RESEND_API_KEY || process.env.AUTH_RESEND_KEY || process.env.RESEND_API_KEY,
+        from: emailFrom,
         maxAge: 60 * 30,
       }),
     ],
