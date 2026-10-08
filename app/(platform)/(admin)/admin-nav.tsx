@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users } from "lucide-react";
+import { LayoutDashboard, Users, HeartPulse } from "lucide-react";
 
 const adminLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/users", label: "Users", icon: Users },
+  { href: "/health", label: "System health", icon: HeartPulse },
 ];
 
 type NavVariant = "sidebar" | "tabs";
@@ -42,7 +43,7 @@ export function AdminNav({ variant }: { variant: NavVariant }) {
               className={`flex min-h-9 items-center text-sm whitespace-nowrap transition-colors ${linkStyle[variant]} ${
                 isActive
                   ? "bg-gray-800 font-medium text-white"
-                  : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-100"
+                  : variant === "tabs" ? "text-slate-800 hover:bg-slate-100" : "text-gray-300 hover:bg-gray-800/60 hover:text-gray-100"
               } focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${ringOffsetStyle[variant]}`}
             >
               <Icon

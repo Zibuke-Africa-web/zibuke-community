@@ -9,6 +9,14 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
+export const serviceRuns = sqliteTable("service_runs", {
+  service: text("service", { enum: ["publisher", "billing"] }).primaryKey(),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+  finishedAt: integer("finished_at", { mode: "timestamp_ms" }).notNull(),
+  status: text("status", { enum: ["success", "failed", "disabled"] }).notNull(),
+  httpStatus: integer("http_status").notNull(),
+}, table => [check("service_runs_service_check", sql`${table.service} in ('publisher','billing')`), check("service_runs_status_check", sql`${table.status} in ('success','failed','disabled')`)]);
+
 // Retain the URL receipt even if a published post is subsequently removed.
 export const publishedArticles = sqliteTable("published_articles", {
   sourceUrl: text("source_url").primaryKey(),
@@ -222,9 +230,11 @@ export const subscriptions = sqliteTable("subscriptions", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   registrationId: text("registration_id"),
   scheduleId: text("schedule_id"),
+  billingReviewReason: text("billing_review_reason"),
 }, table => [
   index("subscriptions_access_idx").on(table.userId, table.spaceSlug, table.status, table.currentPeriodEnd),
   uniqueIndex("subscriptions_schedule_unique").on(table.scheduleId),
+  index("subscriptions_billing_idx").on(table.gateway, table.status, table.billingCycle, table.currentPeriodEnd),
 ]);
 
 // Prices and identity are fixed before redirecting to the gateway. Never trust callback metadata for ownership.
@@ -239,8 +249,11 @@ export const paymentOrders = sqliteTable("payment_orders", {
   renewalSubscriptionId: text("renewal_subscription_id").references(() => subscriptions.id),
   periodEnd: integer("period_end", { mode: "timestamp" }),
   status: text("status", { enum: ["pending", "paid", "failed", "refunded"] }).notNull().default("pending"),
+  reviewReason: text("review_reason"),
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, table => [uniqueIndex("payment_orders_provider_unique").on(table.gateway, table.providerId), index("payment_orders_user_idx").on(table.userId, table.createdAt),
+  index("payment_orders_reconcile_idx").on(table.gateway, table.status, table.lastCheckedAt),
   uniqueIndex("payment_orders_pending_unique").on(table.userId, table.spaceSlug).where(sql`${table.status}='pending' and ${table.renewalSubscriptionId} is null`),
 ]);
 

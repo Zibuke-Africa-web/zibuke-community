@@ -133,12 +133,15 @@ test('custom Worker preserves fetch and dispatches authenticated cron through Op
   const { default: worker } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
   try {
     assert.equal(typeof worker.fetch, 'function');
-    await worker.scheduled({}, { CRON_SECRET: 'fixture' }, {});
+    await worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, {});
     assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/publisher');
     assert.equal(globalThis.publisherRequest.headers.get('authorization'), 'Bearer fixture');
     assert.equal(globalThis.publisherRequest.method, 'POST');
+    await worker.scheduled({ cron: '*/15 * * * *' }, { CRON_SECRET: 'fixture' }, {});
+    assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/billing');
+    await assert.rejects(worker.scheduled({ cron: 'unknown' }, { CRON_SECRET: 'fixture' }, {}), /Unknown cron/);
     globalThis.publisherStatus = 503;
-    await assert.rejects(worker.scheduled({}, { CRON_SECRET: 'fixture' }, {}), /503/);
+    await assert.rejects(worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, {}), /503/);
     await assert.rejects(worker.scheduled({}, {}, {}), /not configured/);
   } finally { delete globalThis.publisherRequest; delete globalThis.publisherStatus; }
 });

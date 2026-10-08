@@ -11,6 +11,9 @@ export function nextMonth(date: Date) {
   const last = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate(); next.setUTCDate(Math.min(day, last)); return next;
 }
 export function peachSuccess(code: string) { return /^(000\.000\.|000\.100\.1|000\.[36])/.test(code); }
+// Explicit card declines only. Unknown, pending and infrastructure errors must
+// never release an order or trigger a second debit automatically.
+export function peachDeclined(code: string) { return /^800\.100\.(1\d\d|20[0-9])$/.test(code); }
 export function moneyCents(value: unknown) {
   if (typeof value !== "string" || !/^\d{1,10}(\.\d{1,2})?$/.test(value)) return null;
   const [whole, decimal = ""] = value.split("."); return Number(whole) * 100 + Number(decimal.padEnd(2, "0"));

@@ -1,5 +1,7 @@
 # Membership payments
 
+Current configuration, activation commands, and Sprint D behavior are documented in [payments-setup.md](payments-setup.md).
+
 ## Merchant setup required
 
 This integration targets **Peach Hosted Checkout V2 (classic)** for the first card payment and registration, and **Peach Server-to-Server card payments** for subsequent monthly payments. These products require merchant enablement and tokenization/recurring permission. Peach recommends Orchestration for new integrations; an Orchestration-only merchant account needs a different adapter. Confirm the enabled product before configuring credentials.
@@ -19,10 +21,10 @@ Use Worker secrets for credentials (`npx wrangler secret put NAME`) and deployme
 | `PEACH_CLIENT_ID`, `PEACH_CLIENT_SECRET`, `PEACH_MERCHANT_ID` | Hosted Checkout dashboard OAuth credentials |
 | `PEACH_ENTITY_ID` | Enabled Checkout/card entity ID |
 | `PEACH_WEBHOOK_SECRET` | Secret assigned when enabling webhook HMAC signing |
-| `PEACH_CARD_ACCESS_TOKEN` | Server-to-Server recurring card bearer token |
+| `PEACH_CARD_ACCESS_TOKEN` / `PEACH_ACCESS_TOKEN` | Server-to-Server recurring card bearer token |
 | `PEACH_CURRENCIES` | Comma-separated supported currencies; defaults to `ZAR` |
 | `PEACH_RECURRING_ENABLED` | Set to `true` only when recurring permissions and billing scheduler are ready |
-| `IKHOKHA_APP_ID`, `IKHOKHA_APP_SECRET`, `IKHOKHA_ENTITY_ID` | Payment API merchant credentials |
+| `IKHOKHA_APP_ID` / `IKHOKHA_APP_KEY`, `IKHOKHA_APP_SECRET`, `IKHOKHA_ENTITY_ID` | Payment API merchant credentials |
 | `IKHOKHA_CURRENCIES` | Comma-separated supported currencies; defaults to `ZAR` |
 | `CRON_SECRET` | Long random secret, shared with the billing scheduler |
 
@@ -34,24 +36,16 @@ iKhokha callbacks must carry `ik-appid` and `ik-sign`; verification signs the es
 
 Checkout creates a recurring card registration; this application schedules the subsequent monthly debits. It does **not** create a second Peach-managed schedule. Do not enable an additional provider-managed schedule for these registrations.
 
-`workers/billing/worker.ts` invokes the billing route using a service binding every 15 minutes. Configure the identical `CRON_SECRET` on both Workers, then deploy the scheduler when ready to enable billing:
-
-```sh
-npx wrangler secret put CRON_SECRET
-npx wrangler secret put CRON_SECRET --config workers/billing/wrangler.toml
-npx wrangler deploy --config workers/billing/wrangler.toml
-```
-
-Deploying this scheduler enables future real charges when `PAYMENTS_MODE=live` and recurring billing is enabled. The main application deployment does not automatically deploy it.
+The main Worker now invokes billing every 15 minutes and the publisher every four hours. Retire the separate `workers/billing` cron if it was previously deployed. See [payments-setup.md](payments-setup.md) for activation and credentials.
 
 Each monthly period receives a deterministic payment reference and an atomic database claim. Concurrent scheduler runs cannot submit the same period twice. Timeouts remain pending; later runs query Peach by merchant reference instead of blindly resubmitting. Canceled subscriptions stop future claims and retain access through the paid-through date. A charge already submitted can still settle after cancellation.
 
-The scheduler processes ten due subscriptions and ten uncertain payments per run. Due subscriptions more than 48 hours overdue require operator reconciliation rather than surprise catch-up billing. Monitor `/api/cron/billing` errors and pending orders; size the scheduler for the membership volume before rollout. Declined or ambiguous renewals do not grant access or automatically retry a debit. Reconcile them before arranging another payment.
+The scheduler processes ten due subscriptions and two uncertain payments per run. Due subscriptions more than 48 hours overdue require operator reconciliation rather than surprise catch-up billing. Monitor `/api/cron/billing` errors and pending orders; size the scheduler for the membership volume before rollout. Declined or ambiguous renewals do not grant access or automatically retry a debit. Reconcile them before arranging another payment.
 
 ## Settlement and operational checks
 
-Prices, user IDs, currencies and space selection are fixed server-side. Return URLs only display pending state; they never activate access. Signed webhook identity, order reference, amount/currency where supplied, and provider references are validated before D1's transactional batch records the receipt and subscription. Duplicate deliveries never extend a pass. Annual access lasts 365 days. Refund/reversal notifications revoke Peach grants; iKhokha refunds require operator reconciliation because this adapter handles its documented SUCCESS/FAILURE payment callback.
+Prices, user IDs, currencies and space selection are fixed server-side. Return URLs display canceled, failed, or pending feedback; they never activate access. Signed webhook identity, order reference, amount/currency where supplied, and provider references are validated before D1's transactional batch records the receipt and subscription. Duplicate deliveries never extend a pass. Annual access lasts 365 days. Refund/reversal notifications revoke Peach grants; iKhokha refunds require operator reconciliation because this adapter handles its documented SUCCESS/FAILURE payment callback.
 
-An initial checkout with an unknown outcome remains pending and blocks a second initial checkout for the same member/space. Do not delete or mark these orders failed merely because a browser closed. Reconcile the provider transaction first. A signed terminal iKhokha FAILURE releases that hold. Initial Peach failures and missing recurring registration IDs require merchant-side reconciliation.
+An initial checkout with an unknown outcome remains pending and blocks a second initial checkout for the same member/space. Do not delete or mark these orders failed merely because a browser closed. Reconcile the provider transaction first. A signed terminal iKhokha FAILURE releases that hold. Signed Peach declines/cancellations also release the initial hold. Uncertain outcomes and missing recurring registration IDs require merchant-side reconciliation.
 
 Before production acceptance, use provider test credentials to complete one approved and one declined checkout, a signed webhook retry, tampered signature rejection, annual activation, one monthly renewal and cancellation. Verify the actual callback fields and HMAC against your enabled products. Test both currencies only where approved. No live checkout, charge, scheduler deployment or merchant verification was performed as part of the local implementation.

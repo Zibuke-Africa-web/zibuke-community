@@ -5,14 +5,16 @@ import handler from "./.open-next/worker.js";
 
 export default {
   fetch: handler.fetch,
-  async scheduled(_event: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext) {
-    if (!env.CRON_SECRET) throw new Error("Publisher cron secret is not configured");
+  async scheduled(event: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext) {
+    if (!env.CRON_SECRET) throw new Error("Cron secret is not configured");
+    const route = event.cron === "0 */4 * * *" ? "publisher" : event.cron === "*/15 * * * *" ? "billing" : null;
+    if (!route) throw new Error("Unknown cron schedule");
     // Invoke Next inside its normal request context so D1 bindings and cache
     // invalidation work. No public HTTP round trip or external scheduler needed.
-    const response = await handler.fetch(new Request("https://zibukecommunity.co.za/api/cron/publisher", {
+    const response = await handler.fetch(new Request(`https://zibukecommunity.co.za/api/cron/${route}`, {
       method: "POST", headers: { authorization: `Bearer ${env.CRON_SECRET}` },
     }), env, ctx);
-    if (!response.ok) throw new Error(`Publisher failed (${response.status})`);
+    if (!response.ok) throw new Error(`${route} failed (${response.status})`);
     await response.body?.cancel();
   },
 } satisfies ExportedHandler<CloudflareEnv>;

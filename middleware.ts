@@ -20,6 +20,6 @@ export const config = {
     "/", "/feed/:path*", "/directory/:path*", "/groups/:path*",
     "/events/:path*", "/profile/:path*", "/friends/:path*",
     "/messages/:path*", "/settings/:path*", "/dashboard/:path*",
-    "/users/:path*", "/media/:path*",
+    "/users/:path*", "/health/:path*", "/media/:path*", "/checkout/:path*",
   ],
 };

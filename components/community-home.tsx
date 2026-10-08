@@ -114,7 +114,7 @@ export function CommunityHome({ feed, now }: { feed: CommunityFeed; now: number 
     <section aria-labelledby="feed-heading" className="space-y-4">
       <h2 id="feed-heading" className="text-lg font-bold">Latest conversations</h2>
       {visible.map(post => <PostCard key={post.id} post={post} now={now} />)}
-      {!visible.length && <p role="status" className="rounded-2xl border border-slate-300 bg-white p-6 text-sm">{search ? "No matching posts on this page." : feed.page > 1 ? "No more posts. Return to the latest conversations." : "No posts yet. Start a conversation in General."}</p>}
+      {!visible.length && <div role="status" className="space-y-3 rounded-2xl border border-slate-300 bg-white p-6 text-sm"><h3 className="text-lg font-bold">{search ? "No matching posts on this page" : feed.page > 1 ? "You’re all caught up" : "Be the first to say hello"}</h3><p>{search ? "Try another phrase or clear your search." : feed.page > 1 ? "Return to the latest conversations." : "Introduce yourself, share an idea, or ask a question. Your first post could start a great conversation in General."}</p>{search ? <button className={button} onClick={() => setSearch("")}>Clear search</button> : feed.page > 1 ? <Link href="/feed" className={button}>Latest conversations</Link> : <a href="#new-post" className={button}>Start a conversation</a>}</div>}
     </section>
     {(feed.page > 1 || feed.hasMore) && <nav aria-label="Feed pages" className="flex justify-between gap-3">
       {feed.page > 1 ? <Link href={`/feed?page=${feed.page - 1}`} className={button}>Newer posts</Link> : <span />}

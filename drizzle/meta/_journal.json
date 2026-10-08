@@ -78,6 +78,20 @@
       "when": 1791451000000,
       "tag": "0010_published_articles",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791452000000,
+      "tag": "0011_billing_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791453000000,
+      "tag": "0012_service_runs",
+      "breakpoints": true
     }
   ]
 }

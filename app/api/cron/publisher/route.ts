@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
 import { constantEqual } from "@/lib/payments";
 import { publishNews } from "@/lib/automation/publisher";
+import { observeServiceRun } from "@/lib/service-runs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +25,8 @@ async function run(request: Request) {
   } catch { return Response.json({ error: "News publisher is unavailable" }, { status: 503, headers }); }
 }
 
-export const GET = run;
-export const POST = run;
+export const GET = observeServiceRun("publisher", run);
+export const POST = GET;
 function methodNotAllowed() { return new Response(null, { status: 405, headers: { ...headers, Allow: "GET, POST" } }); }
 export const HEAD = methodNotAllowed;
 export const PUT = methodNotAllowed;

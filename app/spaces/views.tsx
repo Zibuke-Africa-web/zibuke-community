@@ -33,6 +33,6 @@ export function SpacesDirectory({ spaces, preview }: { spaces: Space[]; preview:
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3"><Privacy space={space} /><Link href={`/spaces/${space.slug}`} className={space.featured ? limeButton : blackButton}>Enter Space <span className="sr-only">: {space.name}</span></Link></div>
       </article>)}
     </section>
-    {!filtered.length && <div className="rounded-2xl border border-slate-200 bg-white p-8 text-black"><h2 className="text-xl font-bold">No matching spaces</h2><p className="my-3">Try another name or tag.</p><button className={blackButton} onClick={() => setQuery("")}>Clear search</button></div>}
+    {!filtered.length && <div role="status" className="rounded-2xl border border-slate-200 bg-white p-8 text-black"><h2 className="text-xl font-bold">{query.trim() ? "No matching spaces" : "New spaces are on the way"}</h2><p className="my-3">{query.trim() ? "Try a broader topic or clear your search to explore every space." : "Join the main feed while we get more conversations ready for you."}</p>{query.trim() ? <button className={blackButton} onClick={() => setQuery("")}>Clear search</button> : <Link href="/feed" className={blackButton}>Explore the community feed</Link>}</div>}
   </>;
 }
