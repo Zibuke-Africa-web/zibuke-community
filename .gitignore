@@ -39,6 +39,10 @@ yarn-error.log*
 .env*
 .dev.vars*
 /Groq API.txt
+# Plain-text credential dumps (case-insensitive filename patterns).
+*[aA][pP][iI]*.txt
+*[sS][eE][cC][rR][eE][tT]*.txt
+LinkedIn*.txt
 
 # vercel
 .vercel

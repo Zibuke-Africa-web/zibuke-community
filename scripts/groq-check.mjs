@@ -6,8 +6,9 @@ try {
   if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password) throw new Error('INVALID_URL');
   if (base.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)) throw new Error('HTTPS_REQUIRED');
   const url = new URL('/api/groq-check', base);
-  url.searchParams.set('secret', 'zibuke-check');
-  const response = await fetch(url, { signal: AbortSignal.timeout(40000), redirect: 'error', cache: 'no-store' });
+  const cookie = process.env.GROQ_CHECK_COOKIE;
+  if (!cookie) throw new Error('ADMIN_SESSION_REQUIRED');
+  const response = await fetch(url, { headers: { Cookie: cookie }, signal: AbortSignal.timeout(40000), redirect: 'error', cache: 'no-store' });
   const data = await response.json();
   const passed = response.ok && data?.ok === true && typeof data.model === 'string' && data.model.length > 0;
   // Print only known fields. Never echo response bodies, URLs, keys or exceptions.

@@ -26,6 +26,7 @@ function setup(t) {
   }
   sqlite.exec("PRAGMA foreign_keys = ON; INSERT INTO users(id,name) VALUES ('alice','Alice Member'),('bob','Bob Member'); INSERT INTO posts(id,user_id,content) VALUES ('legacy','alice','Keep the existing feed');");
   sqlite.exec(readFileSync(new URL('../drizzle/0004_space_posts.sql', import.meta.url), 'utf8'));
+  sqlite.exec(readFileSync(new URL('../drizzle/0005_daily_sparks.sql', import.meta.url), 'utf8'));
   sqlite.exec(readFileSync(new URL('../drizzle/0006_cooing_bruce_banner.sql', import.meta.url), 'utf8'));
   sqlite.exec(readFileSync(new URL('../db/seed-spaces.sql', import.meta.url), 'utf8'));
   sqlite.exec("INSERT INTO spaces(id,slug,name,privacy) VALUES ('secret','secret','Secret','private')");
@@ -145,4 +146,90 @@ test('D1 failures return safe errors rather than leaking or throwing', async t =
     assert.equal(result.error, 'UNAVAILABLE');
   }
   assert.equal(h.calls.paths.length, 0);
+});
+
+test('main-feed publishing persists through the space action with session ownership and refreshes both feeds', async t => {
+  const h = setup(t);
+  h.user(null);
+  assert.equal((await h.createPost('Hello')).error, 'UNAUTHORIZED');
+  assert.equal((await h.getCommunityFeed()).error, 'UNAUTHORIZED');
+  assert.equal(h.calls.contexts, 0);
+  h.user('alice');
+  assert.equal((await h.createPost('   ')).error, 'INVALID_CONTENT');
+  assert.equal((await h.createPost('Hello', 'javascript:alert(1)')).error, 'INVALID_MEDIA');
+  assert.equal(h.sqlite.prepare('SELECT count(*) n FROM space_members').get().n, 0);
+  const result = await h.createPost('  Persistent hello  ', '/media/uploads/photo.jpg');
+  assert.equal(result.success, true);
+  const saved = h.sqlite.prepare('SELECT * FROM posts WHERE id=?').get(result.data.id);
+  assert.equal(saved.user_id, 'alice');
+  assert.equal(saved.space_id, 'space-welcome');
+  assert.equal(saved.content, 'Persistent hello');
+  assert.equal(saved.media_url, '/media/uploads/photo.jpg');
+  assert.ok(h.calls.paths.includes('/'));
+  assert.ok(h.calls.paths.includes('/feed'));
+  assert.ok(h.calls.paths.includes('/spaces/welcome'));
+  assert.equal(h.sqlite.prepare('SELECT count(*) n FROM space_members').get().n, 1);
+  assert.equal((await h.getCommunityFeed()).data.posts[0].id, saved.id);
+  await h.createPost('Second post');
+  assert.equal(h.sqlite.prepare('SELECT count(*) n FROM space_members').get().n, 1);
+});
+
+test('public feed merges public space posts and system sparks chronologically without private, paid or legacy leakage', async t => {
+  const h = setup(t);
+  h.sqlite.exec(`
+    INSERT INTO users(id,name) VALUES ('system-zibuke-community','Zibuke Community');
+    INSERT INTO groups(id,name,privacy,visibility) VALUES ('hidden','Secret group','private','hidden');
+    INSERT INTO spaces(id,slug,name,privacy,is_paywalled) VALUES ('paid','paid','Paid','public',1);
+    INSERT INTO daily_sparks(id,topic,prompt,is_active) VALUES ('spark-test','Topic','Spark prompt',1);
+    INSERT INTO posts(id,user_id,space_id,group_id,content,created_at,media_url) VALUES
+      ('general','alice','space-welcome',null,'General',100,'javascript:bad'),
+      ('business','bob','space-business',null,'Business',300,'https://example.com/photo.jpg'),
+      ('spark-test','system-zibuke-community',null,null,'Spark',200,null),
+      ('bot','system-zibuke-community',null,null,'Community bot update',150,null),
+      ('private','alice','secret',null,'Secret',999,null),
+      ('members','alice','space-creators',null,'Members only',999,null),
+      ('paywall','alice','paid',null,'Paid',999,null),
+      ('hidden-group','alice',null,'hidden','Private group',999,null),
+      ('mixed-group','alice','space-welcome','hidden','Private group in public space',999,null);
+  `);
+  const feed = await h.getCommunityFeed();
+  assert.equal(feed.success, true);
+  assert.deepEqual(Array.from(feed.data.posts, post => post.id), ['business','spark-test','bot','general']);
+  assert.equal(feed.data.posts[1].isDailySpark, true);
+  assert.equal(feed.data.posts[2].isDailySpark, false);
+  assert.equal(feed.data.posts[3].space.slug, 'welcome');
+  assert.equal(feed.data.posts[0].author.name, 'Bob Member');
+  assert.equal(feed.data.posts[0].mediaUrl, 'https://example.com/photo.jpg');
+  assert.equal(feed.data.posts[3].mediaUrl, null);
+  h.sqlite.exec("UPDATE spaces SET privacy='private' WHERE slug='welcome'");
+  assert.ok(!(await h.getCommunityFeed()).data.posts.some(post => post.id === 'general'));
+});
+
+test('feed pagination is bounded and deterministic for equal timestamps', async t => {
+  const h = setup(t);
+  for (let i = 0; i < 35; i++) h.sqlite.prepare('INSERT INTO posts(id,user_id,space_id,content,created_at) VALUES (?,?,?,?,?)').run(`page-${String(i).padStart(2,'0')}`, 'alice','space-welcome','Post',100);
+  const first = (await h.getCommunityFeed()).data;
+  const second = (await h.getCommunityFeed(2)).data;
+  assert.equal(first.posts.length, 30); assert.equal(first.hasMore, true);
+  assert.equal(second.posts.length, 5); assert.equal(second.hasMore, false);
+  assert.equal(first.posts[0].id, 'page-34');
+  assert.equal(new Set([...first.posts, ...second.posts].map(post => post.id)).size, 35);
+  for (const page of [0, -1, 1.5, 10001, '1', NaN]) assert.equal((await h.getCommunityFeed(page)).error, 'INVALID_INPUT');
+});
+
+test('main composer fails closed when General is missing, private, paid or changes privacy during publishing', async t => {
+  const h = setup(t);
+  h.sqlite.exec("UPDATE spaces SET privacy='private' WHERE slug='welcome'");
+  assert.equal((await h.createPost('No')).success, false);
+  h.sqlite.exec("UPDATE spaces SET privacy='public',is_paywalled=1 WHERE slug='welcome'");
+  assert.equal((await h.createPost('No')).success, false);
+  h.sqlite.exec("UPDATE spaces SET is_paywalled=0 WHERE slug='welcome'");
+  h.before(sql => { if (sql.startsWith('insert into posts')) h.sqlite.exec("UPDATE spaces SET privacy='private' WHERE slug='welcome'"); });
+  assert.equal((await h.createPost('Race')).success, false);
+  assert.equal(h.sqlite.prepare('SELECT count(*) n FROM posts WHERE space_id IS NOT NULL').get().n, 0);
+  h.before(null);
+  h.sqlite.exec("DELETE FROM spaces WHERE slug='welcome'");
+  assert.equal((await h.createPost('No destination')).error, 'UNAVAILABLE');
+  h.fail();
+  assert.equal((await h.getCommunityFeed()).error, 'UNAVAILABLE');
 });

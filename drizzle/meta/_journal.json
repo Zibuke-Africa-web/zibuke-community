@@ -64,6 +64,20 @@
       "when": 1791280000000,
       "tag": "0008_paid_spaces",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791450000000,
+      "tag": "0009_general_feed",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791451000000,
+      "tag": "0010_published_articles",
+      "breakpoints": true
     }
   ]
 }

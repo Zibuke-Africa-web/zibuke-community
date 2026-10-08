@@ -1,4 +1,5 @@
 interface CloudflareEnv {
+  BOT_POST_SECRET?: string;
   GROQ_API_KEY?: string;
   GROQ_TEXT_MODEL?: string;
   GROQ_VISION_MODEL?: string;

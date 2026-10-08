@@ -2,12 +2,12 @@
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { drizzle } from "drizzle-orm/d1";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { posts, spaceMembers, spaces, users } from "@/db/schema";
+import { dailySparks, posts, spaceMembers, spaces, users } from "@/db/schema";
 import { normalizeSpaceContent, safeSpaceMedia, validSpaceId } from "@/lib/space-post-input";
-import type { SpaceDetails, SpacePost, SpaceResult } from "@/lib/space-types";
+import type { CommunityFeed, SpaceDetails, SpacePost, SpaceResult } from "@/lib/space-types";
 import { recordActivity } from "@/lib/gamification";
 
 async function database() {
@@ -86,6 +86,10 @@ export async function leaveSpaceAction(spaceId: string): Promise<SpaceResult<nul
 }
 
 export async function createSpacePostAction(spaceId: string, content: string, mediaUrl?: string): Promise<SpaceResult<{ id: string }>> {
+  return publishSpacePost(spaceId, content, mediaUrl);
+}
+
+async function publishSpacePost(spaceId: string, content: string, mediaUrl?: string, publicOnly = false): Promise<SpaceResult<{ id: string }>> {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "UNAUTHORIZED" };
@@ -103,11 +107,62 @@ export async function createSpacePostAction(spaceId: string, content: string, me
     // INSERT SELECT makes membership validation atomic with publishing on D1.
     const inserted = await db.all<{ id: string }>(sql`insert into posts (id, user_id, space_id, content, media_url)
       select ${id}, ${session.user.id}, ${spaces.id}, ${normalized}, ${media} from ${spaces}
-      where ${spaces.id} = ${spaceId} and ${memberExists(session.user.id)} and ${paidAccess(session.user.id)} returning id`);
+      where ${spaces.id} = ${spaceId} and ${memberExists(session.user.id)} and ${paidAccess(session.user.id)}
+        and (${publicOnly ? 0 : 1} or (${spaces.privacy}='public' and ${spaces.isPaywalled}=0)) returning id`);
     if (!inserted.length) return { success: false, error: "MEMBERSHIP_REQUIRED" };
     await recordActivity(session.user.id).catch(() => {});
     refreshSpace(space.slug);
+    revalidatePath("/");
+    revalidatePath("/feed");
     return { success: true, data: { id } };
+  } catch { return { success: false, error: "UNAVAILABLE" }; }
+}
+
+// Main-feed authors choose content, never a user ID or destination space.
+export async function createPost(content: string, mediaUrl?: string): Promise<SpaceResult<{ id: string }>> {
+  try {
+    if (!(await auth())?.user?.id) return { success: false, error: "UNAUTHORIZED" };
+    if (!normalizeSpaceContent(content)) return { success: false, error: "INVALID_CONTENT" };
+    if (mediaUrl !== undefined && mediaUrl !== "" && !safeSpaceMedia(mediaUrl)) return { success: false, error: "INVALID_MEDIA" };
+    const db = await database();
+    const [general] = await db.select({ id: spaces.id }).from(spaces).where(and(
+      eq(spaces.slug, "welcome"), eq(spaces.privacy, "public"), eq(spaces.isPaywalled, false),
+    )).limit(1);
+    if (!general) return { success: false, error: "UNAVAILABLE" };
+    const joined = await joinSpaceAction(general.id);
+    if (!joined.success) return joined;
+    return publishSpacePost(general.id, content, mediaUrl, true);
+  } catch { return { success: false, error: "UNAVAILABLE" }; }
+}
+
+export async function getCommunityFeed(page = 1): Promise<SpaceResult<CommunityFeed>> {
+  try {
+    if (!(await auth())?.user?.id) return { success: false, error: "UNAUTHORIZED" };
+    if (!Number.isSafeInteger(page) || page < 1 || page > 10000) return { success: false, error: "INVALID_INPUT" };
+    const db = await database();
+    const rows = await db.select({
+      id: posts.id, content: posts.content, mediaUrl: posts.mediaUrl, createdAt: posts.createdAt,
+      authorId: users.id, authorName: users.name,
+      authorImage: sql<string | null>`coalesce(${users.profilePhotoUrl}, ${users.image}, ${users.avatarUrl})`,
+      spaceSlug: spaces.slug, spaceName: spaces.name, sparkId: dailySparks.id,
+    }).from(posts).innerJoin(users, eq(posts.userId, users.id))
+      .leftJoin(spaces, eq(posts.spaceId, spaces.id))
+      .leftJoin(dailySparks, eq(dailySparks.id, posts.id))
+      // Never promote orphaned user/group posts or paid content into the public feed.
+      .where(and(isNull(posts.groupId), or(
+        and(eq(spaces.privacy, "public"), eq(spaces.isPaywalled, false)),
+        and(isNull(posts.spaceId), eq(posts.userId, "system-zibuke-community")),
+      )))
+      .orderBy(desc(posts.createdAt), desc(posts.id)).limit(31).offset((page - 1) * 30);
+    return { success: true, data: { page, hasMore: rows.length > 30, posts: rows.slice(0, 30).map(row => {
+      const name = row.authorName?.trim() || "Community member";
+      return {
+        id: row.id, content: row.content, mediaUrl: safeSpaceMedia(row.mediaUrl), createdAt: row.createdAt.toISOString(),
+        author: { id: row.authorId, name, initials: name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(), image: safeSpaceMedia(row.authorImage) },
+        space: row.spaceSlug && row.spaceName ? { slug: row.spaceSlug, name: row.spaceName } : null,
+        isDailySpark: row.sparkId !== null && row.authorId === "system-zibuke-community",
+      };
+    }) } };
   } catch { return { success: false, error: "UNAVAILABLE" }; }
 }
 

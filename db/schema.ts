@@ -9,6 +9,13 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
+// Retain the URL receipt even if a published post is subsequently removed.
+export const publishedArticles = sqliteTable("published_articles", {
+  sourceUrl: text("source_url").primaryKey(),
+  postId: text("post_id").references(() => posts.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const users = sqliteTable("users", {
   id: text("id")
     .primaryKey()

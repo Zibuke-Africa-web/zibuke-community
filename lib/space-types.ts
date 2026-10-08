@@ -9,3 +9,9 @@ export type SpacePost = {
   id: string; content: string; mediaUrl: string | null; createdAt: string;
   author: { id: string; name: string; initials: string; image: string | null };
 };
+
+export type CommunityPost = SpacePost & {
+  space: { slug: string; name: string } | null;
+  isDailySpark: boolean;
+};
+export type CommunityFeed = { posts: CommunityPost[]; hasMore: boolean; page: number };

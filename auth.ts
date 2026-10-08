@@ -33,6 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     callbacks: {
       session({ session, user }) {
         session.user.id = user.id;
+        session.user.role = user.role ?? "member";
         return session;
       },
     },

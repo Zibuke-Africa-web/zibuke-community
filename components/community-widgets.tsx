@@ -1,27 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, MessageCircle } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { fallbackSpark, type DailySpark } from "@/lib/daily-spark";
 import { useCoHost } from "@/components/cohost-drawer";
 import { LeaderboardWidget } from "@/components/leaderboard-widget";
 import type { Champion } from "@/lib/community";
 
-const friends = [
-  { name: "Thandi Mokoena", initials: "TM", color: "bg-[#ccff00] text-black" },
-  { name: "Sipho Dlamini", initials: "SD", color: "bg-black text-[#ccff00]" },
-  { name: "Lerato Nkosi", initials: "LN", color: "bg-white text-black border border-black" },
-];
-
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current";
-
-function Avatar({ initials, small = false, color = "bg-[#ccff00] text-black" }: { initials: string; small?: boolean; color?: string }) {
-  return (
-    <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-full font-bold ${small ? "size-9 text-xs" : "size-11 text-sm"} ${color}`}>
-      {initials}
-    </span>
-  );
-}
 
 export function CommunityWidgets({ spark = fallbackSpark, champions = [] }: { spark?: DailySpark; champions?: Champion[] }) {
   const openCoHost = useCoHost();
@@ -90,33 +76,7 @@ export function CommunityWidgets({ spark = fallbackSpark, champions = [] }: { sp
         </div>
       </section>
 
-      {/* Active Friends / Chat Card */}
-      <section className="border-t border-slate-200 pt-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold">Active friends / Chat</h2>
-          <span className="text-[10px] text-black">Preview</span>
-        </div>
-        <ul className="mt-3 space-y-1">
-          {friends.map((friend) => (
-            <li key={friend.name}>
-              <Link
-                href="/messages"
-                className={`flex items-center gap-3 rounded-xl bg-white p-2 text-black hover:opacity-90 ${focus}`}
-              >
-                <span className="relative">
-                  <Avatar initials={friend.initials} small color={friend.color} />
-                  <span aria-hidden="true" className="absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-black bg-[#ccff00]" />
-                </span>
-                <span className="text-sm font-medium">{friend.name}</span>
-                <MessageCircle size={15} className="ml-auto text-black" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs leading-5 text-black">
-          Sample contacts. Live chat presence is coming soon.
-        </p>
-      </section>
+
     </div>
   );
 }

@@ -12,11 +12,12 @@ const compiled = ts.transpileModule(source, {
 const configContext = { exports: {}, process: { env: {} } };
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/groq-config.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, configContext);
 
-function harness({ key = 'private-test-key', fallback = '', contextFails = false, status = 200, body = { choices: [{ message: { content: 'pong' } }] }, throws = false, malformed = false } = {}) {
+function harness({ session = { user: { id: 'admin-id', role: 'admin' } }, authFails = false, key = 'private-test-key', fallback = '', contextFails = false, status = 200, body = { choices: [{ message: { content: 'pong' } }] }, throws = false, malformed = false } = {}) {
   const calls = [];
   let contextCalls = 0;
   const context = { exports: {}, URL, AbortSignal, Error, process: { env: { GROQ_API_KEY: fallback } },
     require: name => {
+      if (name === '@/auth') return { auth: async () => { if (authFails) throw new Error('Authentication unavailable'); return session; } };
       if (name === '@/lib/groq-config') return configContext.exports;
       if (name === 'next/server') return { NextResponse: Response };
       assert.equal(name, '@opennextjs/cloudflare');
@@ -33,7 +34,7 @@ function harness({ key = 'private-test-key', fallback = '', contextFails = false
     },
   };
   vm.runInNewContext(compiled, context);
-  const request = (query = '?secret=zibuke-check') => new Request(`https://community.test/api/groq-check${query}`);
+  const request = (query = '') => new Request(`https://community.test/api/groq-check${query}`);
   return { ...context.exports, calls, request, contextCalls: () => contextCalls };
 }
 
@@ -46,13 +47,15 @@ test('uses only named runtime imports and the default runtime with dynamic rende
 });
 
 test('unauthorized calls stop before secret lookup or inference', async () => {
-  const h = harness();
-  for (const query of ['', '?secret=wrong']) {
-    const response = await h.GET(h.request(query));
-    assert.equal(response.status, 401);
-    assert.deepEqual(await response.json(), { error: 'Unauthorized' });
+  for (const session of [null, { user: { id: 'member', role: 'member' } }, { user: { id: 'member' } }]) {
+    const h = harness({ session });
+    for (const query of ['', '?secret=wrong', '?secret=zibuke-check']) {
+      const response = await h.GET(h.request(query));
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { error: 'Forbidden' });
+    }
+    assert.equal(h.calls.length, 0); assert.equal(h.contextCalls(), 0);
   }
-  assert.equal(h.calls.length, 0); assert.equal(h.contextCalls(), 0);
 });
 
 test('sends a native text ping with the Cloudflare key and returns the requested diagnostics', async () => {
@@ -61,8 +64,8 @@ test('sends a native text ping with the Cloudflare key and returns the requested
   assert.equal(response.status, 200);
   assert.ok(response.headers.get('cache-control').includes('no-store'));
   const data = await response.json();
-  assert.equal(data.ok, true); assert.equal(data.maskedKey, 'privat...-key');
-  assert.equal(data.hasCloudflareAi, true); assert.equal(data.model, 'openai/gpt-oss-20b');
+  assert.equal(data.ok, true); assert.equal(data.maskedKey, undefined);
+  assert.equal(data.hasCloudflareAi, undefined); assert.equal(data.model, 'openai/gpt-oss-20b');
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(h.calls[0].headers.Authorization, 'Bearer private-test-key');
@@ -78,39 +81,45 @@ test('falls back for absent binding and failed context lookup', async () => {
   }
 });
 
-test('missing key returns HTTP 200 with ok false and binding names only', async () => {
+test('missing key returns a generic error without binding names', async () => {
   const h = harness({ key: '' });
   const response = await h.GET(h.request());
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.ok, false);
-  assert.deepEqual(data.bindingsDetected, ['GROQ_API_KEY', 'AI', 'DB']);
+  assert.deepEqual(data, { ok: false, error: 'Diagnostic service is unavailable' });
   assert.equal(h.calls.length, 0);
   const absent = harness({ contextFails: true });
-  assert.deepEqual((await (await absent.GET(absent.request())).json()).bindingsDetected, []);
+  assert.deepEqual((await (await absent.GET(absent.request())).json()).bindingsDetected, undefined);
 });
 
-test('provider rejection preserves status and details; non-JSON errors and network failures are handled', async () => {
+test('provider rejection preserves status but suppresses sensitive bodies and exceptions', async () => {
   for (const status of [401, 403, 429, 500]) {
     const h = harness({ status, body: { error: { message: 'Rejected' } } });
     const response = await h.GET(h.request());
     assert.equal(response.status, 200);
     const data = await response.json();
     assert.equal(data.ok, false); assert.equal(data.groqStatus, status);
-    assert.deepEqual(data.details, { error: { message: 'Rejected' } });
+    assert.equal(data.details, undefined);
   }
   const malformed = harness({ status: 502, malformed: true });
-  assert.deepEqual((await (await malformed.GET(malformed.request())).json()).details, {});
+  assert.deepEqual((await (await malformed.GET(malformed.request())).json()).details, undefined);
   const failed = harness({ throws: true });
   const response = await failed.GET(failed.request());
   assert.equal(response.status, 500);
-  assert.deepEqual(await response.json(), { ok: false, error: 'Network unavailable' });
+  assert.deepEqual(await response.json(), { ok: false, error: 'Diagnostic service is unavailable' });
 });
 
 const scriptSource = readFileSync(new URL('../scripts/groq-check.mjs', import.meta.url), 'utf8');
+test('authentication failures deny access without inference or configuration lookup', async () => {
+  const h = harness({ authFails: true });
+  assert.equal((await h.GET(h.request())).status, 403);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.contextCalls(), 0);
+});
 async function runScript(body, status = 200) {
   const logs = [];
-  const process = { argv: ['node', 'groq-check.mjs', 'https://community.test'], exitCode: undefined };
+  const process = { env: { GROQ_CHECK_COOKIE: 'test-session-cookie' }, argv: ['node', 'groq-check.mjs', 'https://community.test'], exitCode: undefined };
   await vm.runInNewContext(`(async () => { ${scriptSource}\n })()`, {
     process, URL, AbortSignal, console: { log: value => logs.push(value), error: value => logs.push(value) },
     fetch: async () => Response.json(body, { status }),
@@ -124,7 +133,7 @@ test('script understands HTTP 200 failures and does not print diagnostic payload
   assert.ok(success.logs.some(line => line.includes('PASS')));
   assert.ok(success.logs.some(line => line.includes('Vision inference: not checked')));
   assert.ok(!success.logs.join('').includes('private-value'));
-  for (const body of [{ ok: false }, { error: 'Unauthorized' }, { ok: true }]) {
+  for (const body of [{ ok: false }, { error: 'Forbidden' }, { ok: true }]) {
     assert.equal((await runScript(body)).process.exitCode, 1);
   }
 });

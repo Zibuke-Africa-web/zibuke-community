@@ -33,6 +33,14 @@ vm.runInNewContext(source, { exports: {}, process: { env: processEnv }, require:
 } });
 const config = await factory();
 
+test('database user role populates the session and absent roles fail closed', () => {
+  for (const role of ['admin', 'member', undefined]) {
+    const session = config.callbacks.session({ session: { user: { role: 'admin' } }, user: { id: 'database-user', role } });
+    assert.equal(session.user.id, 'database-user');
+    assert.equal(session.user.role, role ?? 'member');
+  }
+});
+
 test('providers use their configured environments with database sessions', () => {
   assert.equal(config.session.strategy, 'database');
   assert.equal(config.pages.signIn, '/login');

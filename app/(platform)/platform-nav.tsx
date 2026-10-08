@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Compass, Home, LayoutGrid, Settings, UserRound, Users, UsersRound } from "lucide-react";
+import { CalendarDays, Compass, Home, LayoutGrid, Settings, UserRound, UsersRound } from "lucide-react";
 
 const pinnedSpaces = [
   { href: "/spaces/welcome", label: "Welcome" },
@@ -18,7 +18,6 @@ export function PlatformNav({ profileHref, onNavigate }: { profileHref: string; 
     { href: profileHref, label: "Your Profile", icon: UserRound },
     { href: "/feed", label: "Home Feed", icon: Home },
     { href: "/friends", label: "Friends", icon: UsersRound },
-    { href: "/groups", label: "Groups", icon: Users },
     { href: "/spaces", label: "Spaces", icon: LayoutGrid },
     { href: "/events", label: "Events", icon: CalendarDays },
     { href: "/directory", label: "Directory", icon: Compass },

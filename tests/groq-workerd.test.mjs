@@ -27,7 +27,7 @@ test('all three Groq handlers execute using real workerd fetch', { timeout: 6000
       builder.onResolve({ filter: /^(@opennextjs\/cloudflare|@\/auth|@\/lib\/space-access|next\/server)$/ }, args => ({ path: args.path, namespace: 'test-context' }));
       builder.onLoad({ filter: /.*/, namespace: 'test-context' }, args => ({ contents:
         args.path === '@/lib/space-access' ? 'export async function getSpaceAccess() { return { allowed: true }; }' :
-        args.path === '@/auth' ? 'export async function auth() { return { user: { id: "test-member" } }; }' :
+        args.path === '@/auth' ? 'export async function auth() { return { user: { id: "test-member", role: "admin" } }; }' :
         args.path === 'next/server' ? 'export const NextResponse = Response;' :
         'export async function getCloudflareContext() { return { env: globalThis.testEnv }; }', loader: 'js' }));
     } }],

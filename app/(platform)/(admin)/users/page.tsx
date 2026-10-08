@@ -48,8 +48,8 @@ export default async function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white">Users</h1>
-        <p className="text-sm text-gray-400">
+        <h1 className="text-lg font-semibold text-slate-900">Users</h1>
+        <p className="text-sm text-slate-600">
           {rows.length} {rows.length === 1 ? "profile" : "profiles"} in D1.
         </p>
       </header>
@@ -57,7 +57,7 @@ export default async function AdminUsersPage() {
       <div className="overflow-x-auto rounded-lg border border-gray-800 bg-gray-900">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-left text-xs tracking-wide text-gray-500 uppercase">
+            <tr className="border-b border-gray-800 text-left text-xs tracking-wide text-gray-300 uppercase">
               <th scope="col" className="px-4 py-2.5 font-medium">
                 ID
               </th>
@@ -89,7 +89,7 @@ export default async function AdminUsersPage() {
 
               return (
                 <tr key={row.id} className="align-top hover:bg-gray-800/40">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  <td className="px-4 py-3 font-mono text-xs text-gray-300">
                     <span title={row.id}>{row.id.slice(0, 8)}</span>
                   </td>
                   <td className="px-4 py-3 font-medium whitespace-nowrap text-gray-100">
@@ -107,7 +107,7 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {links.length === 0 ? (
-                      <span className="text-gray-500">—</span>
+                      <span className="text-gray-300">—</span>
                     ) : (
                       <ul className="flex flex-col gap-1">
                         {links.map(({ label, value }) => {
@@ -115,7 +115,7 @@ export default async function AdminUsersPage() {
 
                           return (
                             <li key={label} className="text-xs">
-                              <span className="text-gray-500">{label}:</span>{" "}
+                              <span className="text-gray-300">{label}:</span>{" "}
                               {href ? (
                                 <a
                                   href={href}
@@ -143,7 +143,7 @@ export default async function AdminUsersPage() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-8 text-center text-sm text-gray-400">
+        <p className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-8 text-center text-sm text-gray-300">
           No profiles yet.
         </p>
       ) : null}

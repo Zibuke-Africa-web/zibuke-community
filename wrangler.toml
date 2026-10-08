@@ -1,5 +1,5 @@
 name = "zibuke-community"
-main = ".open-next/worker.js"
+main = "worker.ts"
 compatibility_date = "2026-09-28"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 routes = [{ pattern = "zibukecommunity.co.za", custom_domain = true }]
@@ -35,5 +35,8 @@ binding = "IMAGES"
 
 [ai]
 binding = "AI"
+
+[triggers]
+crons = ["0 */4 * * *"]
 
 # Set CRON_SECRET using `wrangler secret put CRON_SECRET` (never commit its value).

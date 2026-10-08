@@ -1,15 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { groqModels, groqReasoningOptions } from "@/lib/groq-config";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "no-store, private", "Referrer-Policy": "no-referrer", "X-Groq-Check-Version": "2026-10-06-model-config-v2" };
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  if (searchParams.get("secret") !== "zibuke-check") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id || session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers });
   }
 
   let apiKey: string | undefined;
@@ -30,8 +31,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: "GROQ_API_KEY is not configured in Cloudflare bindings or process.env",
-        bindingsDetected: cfEnv ? Object.keys(cfEnv) : [],
+        error: "Diagnostic service is unavailable",
       },
       { status: 200, headers }
     );
@@ -63,8 +63,6 @@ export async function GET(req: NextRequest) {
           error: "Groq Cloud rejected the request",
           groqStatus: groqRes.status,
           model,
-          hint: groqRes.status === 404 ? "The configured model is unavailable to this Groq project. Set GROQ_TEXT_MODEL to a model your project can access." : undefined,
-          details: data,
         },
         { status: 200, headers }
       );
@@ -76,14 +74,12 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({
       ok: true,
-      message: "Groq API is verified and working on live Cloudflare Worker!",
+      message: "Text inference succeeded",
       model,
-      maskedKey: apiKey.slice(0, 6) + "..." + apiKey.slice(-4),
-      hasCloudflareAi: Boolean(cfEnv?.AI),
     }, { headers });
-  } catch (err: unknown) {
+  } catch {
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message || "Failed to fetch Groq Cloud" : "Failed to fetch Groq Cloud" },
+      { ok: false, error: "Diagnostic service is unavailable" },
       { status: 500, headers }
     );
   }

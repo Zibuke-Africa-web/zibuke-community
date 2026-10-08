@@ -44,8 +44,8 @@ export default async function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white">Dashboard</h1>
-        <p className="text-sm text-gray-400">
+        <h1 className="text-lg font-semibold text-slate-900">Dashboard</h1>
+        <p className="text-sm text-slate-600">
           Live totals read from the D1 database.
         </p>
       </header>
@@ -60,12 +60,12 @@ export default async function AdminDashboardPage() {
               <h2 className="text-xs font-medium tracking-wide text-gray-400 uppercase">
                 {label}
               </h2>
-              <Icon aria-hidden="true" className="size-4 text-gray-500" />
+              <Icon aria-hidden="true" className="size-4 text-gray-300" />
             </div>
             <p className="mt-3 text-3xl font-semibold tabular-nums text-white">
               {value}
             </p>
-            <p className="mt-1 text-xs text-gray-500">{hint}</p>
+            <p className="mt-1 text-xs text-gray-300">{hint}</p>
           </article>
         ))}
       </div>

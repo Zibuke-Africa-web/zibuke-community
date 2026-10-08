@@ -16,6 +16,16 @@ npm run deploy:cloudflare
 
 The deployment workflow applies migrations before uploading the Worker. `0006_cooing_bruce_banner.sql` adds events, RSVPs, directory fields, gamification counters, subscriptions, payment orders and receipts. `0007_lovely_siren.sql` adds renewal tracking and prevents concurrent pending initial checkouts for the same member/space. `0008_paid_spaces.sql` configures the three requested paid spaces. Existing space members do **not** receive a free subscription: the paywall migration requires a valid paid-through subscription for all members.
 
+## Main community feed
+
+Migration `0009_general_feed.sql` provisions General / Welcome for fresh databases, preserving any existing space and its privacy/payment policy. Apply it through the normal migration workflow before rollout.
+
+The authenticated `/feed` reads persisted public, non-paywalled space posts and unscoped posts from the trusted system author. Legacy group posts and unscoped ordinary-user posts are excluded. Daily Sparks already have persisted system posts; they appear once in chronological order with a DailySpark badge. Results are paginated in batches of 30, newest first with ID tie-breaking. Search filters the displayed page.
+
+The composer delegates to the existing space-post publishing implementation, validates content/media, derives authorship from the session, and joins the author to General when necessary. It fails closed if General is missing, private or paid, including a policy change during insertion. Successful posts revalidate `/`, `/feed` and the space. Photo uploads use the existing R2 action; HTTPS media links are also supported. Likes and comments remain unimplemented and are no longer presented as local-only controls.
+
+`/groups` permanently redirects to `/spaces`. Navigation and widgets no longer link to `/messages`; direct visits show a static coming-soon page without reading posts.
+
 ## Events and directory data
 
 Events are persisted in D1. There is deliberately no fabricated workshop schedule. Insert real events through an authorized database/admin workflow; timestamps are Unix seconds, rendered in South African Standard Time:
