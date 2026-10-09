@@ -7,7 +7,7 @@ export default {
   fetch: handler.fetch,
   async scheduled(event: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext) {
     if (!env.CRON_SECRET) throw new Error("Cron secret is not configured");
-    const route = event.cron === "0 */4 * * *" ? "publisher" : event.cron === "*/15 * * * *" ? "billing" : null;
+    const route = event.cron === "0 * * * *" ? "publisher" : event.cron === "*/15 * * * *" ? "billing" : null;
     if (!route) throw new Error("Unknown cron schedule");
     // Invoke Next inside its normal request context so D1 bindings and cache
     // invalidation work. No public HTTP round trip or external scheduler needed.

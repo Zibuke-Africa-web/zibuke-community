@@ -18,6 +18,7 @@
 /out/
 
 # cloudflare
+/backups/
 /.wrangler/
 /.open-next/
 

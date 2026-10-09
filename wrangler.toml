@@ -37,6 +37,6 @@ binding = "IMAGES"
 binding = "AI"
 
 [triggers]
-crons = ["0 */4 * * *", "*/15 * * * *"]
+crons = ["0 * * * *", "*/15 * * * *"]
 
 # Set CRON_SECRET using `wrangler secret put CRON_SECRET` (never commit its value).

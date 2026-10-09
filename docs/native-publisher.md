@@ -1,6 +1,6 @@
 # Native Cloudflare news publisher
 
-The main Worker runs `0 */4 * * *` (UTC, every four hours). `worker.ts` preserves
+The main Worker runs `0 * * * *` (UTC, at the start of every hour). `worker.ts` preserves
 OpenNext's fetch handler and invokes `/api/cron/publisher` within that handler's
 request context. RSS fetching, Workers AI and D1 publishing require no n8n service.
 

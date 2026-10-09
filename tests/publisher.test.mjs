@@ -173,7 +173,7 @@ test('custom Worker preserves fetch and dispatches authenticated cron through Op
   const { default: worker } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
   try {
     assert.equal(typeof worker.fetch, 'function');
-    await worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} });
+    await worker.scheduled({ cron: '0 * * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} });
     assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/publisher');
     assert.equal(globalThis.publisherRequest.headers.get('authorization'), 'Bearer fixture');
     assert.equal(globalThis.publisherRequest.method, 'POST');
@@ -181,7 +181,7 @@ test('custom Worker preserves fetch and dispatches authenticated cron through Op
     assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/billing');
     await assert.rejects(worker.scheduled({ cron: 'unknown' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} }), /Unknown cron/);
     globalThis.publisherStatus = 503;
-    await assert.rejects(worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} }), /503/);
+    await assert.rejects(worker.scheduled({ cron: '0 * * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} }), /503/);
     await assert.rejects(worker.scheduled({}, {}, { waitUntil() {} }), /not configured/);
   } finally { delete globalThis.publisherRequest; delete globalThis.publisherStatus; }
 });
