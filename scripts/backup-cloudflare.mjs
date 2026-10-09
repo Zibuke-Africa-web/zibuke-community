@@ -5,7 +5,6 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 
 const exec = promisify(execFile);
-const root = process.cwd();
 const account = '59d043a264dc6132d6feb01884cf2533';
 const output = path.resolve(process.argv[2] || `backups/cloudflare-${new Date().toISOString().replace(/[:.]/g, '-')}`);
 await fs.mkdir(output, { recursive: true });
