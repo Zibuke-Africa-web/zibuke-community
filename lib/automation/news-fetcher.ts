@@ -48,14 +48,15 @@ export function parseFeed(xml: string): NewsArticle[] {
   if (xml.length > 1_048_576) return [];
   const articles: NewsArticle[] = [];
   const seen = new Set<string>();
-  for (const match of xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item\s*>/gi)) {
+  for (const match of xml.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)\s*>/gi)) {
     const item = match[1];
     if (/<item\b/i.test(item)) continue;
     const tag = (name: string) => item.match(new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)<\\/${name}\\s*>`, "i"))?.[1] || "";
     const title = plainText(tag("title")).slice(0, 240);
-    const link = canonicalArticleUrl(plainText(tag("link")));
-    const date = Date.parse(plainText(tag("pubDate")));
-    const description = plainText(tag("description") || tag("content:encoded")).slice(0, 6000);
+    const atomLink = [...item.matchAll(/<link\b([^>]*)>/gi)].map(match => match[1]).find(attrs => !/rel=["'](?!alternate["'])/i.test(attrs));
+    const link = canonicalArticleUrl(plainText(tag("link") || atomLink?.match(/href=["']([^"']+)["']/i)?.[1] || ""));
+    const date = Date.parse(plainText(tag("pubDate") || tag("published") || tag("updated")));
+    const description = plainText(tag("description") || tag("content:encoded") || tag("summary") || tag("content")).slice(0, 6000);
     if (!title || !link || !Number.isFinite(date) || !description || seen.has(link)) continue;
     seen.add(link);
     articles.push({ title, link, pubDate: new Date(date).toISOString(), description });
@@ -69,7 +70,7 @@ async function fetchFeed(feed: string): Promise<NewsArticle[]> {
     signal: AbortSignal.timeout(15_000), redirect: "follow",
     headers: { Accept: "application/rss+xml, application/xml, text/xml", "User-Agent": "ZibukePulse/1.0 (+https://zibukecommunity.co.za)" },
   });
-  if (!response.ok || !response.body) throw new Error("Feed unavailable");
+  if (!response.ok || !response.body) throw new Error(`Feed unavailable (HTTP ${response.status})`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let xml = "", size = 0;
@@ -83,15 +84,31 @@ async function fetchFeed(feed: string): Promise<NewsArticle[]> {
     }
     xml += decoder.decode();
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
-  const hostname = new URL(feed).hostname;
+  if (!/<(?:rss|feed|rdf:RDF)\b/i.test(xml) || /<html\b/i.test(xml.slice(0, 500))) throw new Error("Expected RSS or Atom XML");
+  const hostname = new URL(feed).hostname.replace(/^www\./, "");
   // Only publish article links belonging to the curated source.
   return parseFeed(xml).filter(article => new URL(article.link).hostname === hostname);
 }
 
-export async function fetchNews(): Promise<NewsArticle[]> {
-  const results = await Promise.allSettled(NEWS_FEEDS.map(fetchFeed));
-  const articles = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
-  if (!articles.length) throw new Error("No usable news feeds available");
+export interface FeedDiagnostic { url: string; itemsFound: number; error?: string }
+
+export async function fetchNews(feedsChecked: FeedDiagnostic[] = []): Promise<NewsArticle[]> {
+  const results = await Promise.all(NEWS_FEEDS.map(async url => {
+    try {
+      const items = await fetchFeed(url);
+      feedsChecked.push({ url, itemsFound: items.length });
+      console.log("Publisher feed checked", { url, itemsFound: items.length });
+      return items;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      feedsChecked.push({ url, itemsFound: 0, error: message });
+      console.error("Publisher feed failed", { url, error: message });
+      return [];
+    }
+  }));
+  const articles = results.flat();
   const unique = new Map(articles.map(article => [article.link, article]));
-  return [...unique.values()].sort((a, b) => Date.parse(b.pubDate) - Date.parse(a.pubDate));
+  const items = [...unique.values()].sort((a, b) => Date.parse(b.pubDate) - Date.parse(a.pubDate));
+  console.log("Fetched articles count:", items.length);
+  return items;
 }

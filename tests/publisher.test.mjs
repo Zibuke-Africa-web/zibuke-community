@@ -33,7 +33,7 @@ test('native Workers publisher authorization, transactional D1 deduplication and
       globalThis.fetch = async url => {
         if (globalThis.testMode === 'feeds-fail') return new Response('', {status:503});
         if (!String(url).includes('techcentral')) return new Response('', {status:503});
-        return new Response(globalThis.testXml);
+        return new Response('<rss>' + globalThis.testXml + '</rss>');
       };
       export default { async fetch(request, env) {
         globalThis.testMode = request.headers.get('x-test-mode');
@@ -53,7 +53,7 @@ test('native Workers publisher authorization, transactional D1 deduplication and
         return response;
       } };
     `, resolveDir: process.cwd() },
-    bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022',
+    bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022', define: { 'process.env.NODE_ENV': '"production"' },
     plugins: [{ name: 'publisher-context', setup(builder) {
       builder.onResolve({ filter: /^(@opennextjs\/cloudflare|next\/cache)$/ }, args => ({ path: args.path, namespace: 'publisher-context' }));
       builder.onLoad({ filter: /.*/, namespace: 'publisher-context' }, args => ({
@@ -112,15 +112,33 @@ test('native Workers publisher authorization, transactional D1 deduplication and
       await db.prepare('INSERT INTO posts(id,user_id,space_id,content) VALUES(?,?,?,?)').bind('legacy', 'system-zibuke-pulse', 'space-welcome', 'Source: https://techcentral.co.za/legacy/').run();
       assert.equal((await (await call(auth, 'POST', item('legacy'))).json()).articlesIngested, 0);
     });
-    await t.test('feed and AI failures return 503 without recording a failed article', async () => {
-      for (const mode of ['feeds-fail', 'ai-fail', 'ai-invalid']) {
+    await t.test('feed failures are diagnosed and AI failures publish excerpts', async () => {
+      for (const mode of ['feeds-fail']) {
         assert.equal((await call({ ...auth, 'x-test-mode': mode }, 'POST', item('retry'))).status, 503);
       }
-      assert.equal((await (await call(auth, 'POST', item('retry'))).json()).articlesIngested, 1);
+      for (const mode of ['ai-fail', 'ai-invalid']) {
+        const response = await call({...auth, 'x-test-mode': mode}, 'POST', item(mode));
+        assert.equal(response.status, 200);
+        const result = await response.json();
+        assert.equal(result.articlesSaved, 1);
+        assert.ok(result.errors.some(error => error.includes('AI fallback')));
+      }
     });
     await t.test('a private default space cannot receive automated public posts', async () => {
       await db.prepare("UPDATE spaces SET privacy='private' WHERE id='space-welcome'").run();
-      assert.equal((await call(auth, 'POST', item('private'))).status, 503);
+      const response = await call(auth, 'POST', item('private'));
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.articlesSaved, 1);
+      assert.notEqual((await db.prepare('SELECT space_id FROM posts WHERE id=?').bind(result.postIds[0]).first()).space_id, 'space-welcome');
+    });
+    await t.test('missing migration provides exact schema diagnostics', async () => {
+      await db.prepare('DROP TABLE published_articles').run();
+      const response = await call(auth, 'POST', item('missing'));
+      assert.equal(response.status, 503);
+      const result = await response.json();
+      assert.equal(result.articlesSaved, 0);
+      assert.ok(result.errors.some(error => error.includes('0010') && error.includes('no such table')));
     });
   } finally { await mf.dispose(); }
 });
@@ -133,15 +151,15 @@ test('custom Worker preserves fetch and dispatches authenticated cron through Op
   const { default: worker } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
   try {
     assert.equal(typeof worker.fetch, 'function');
-    await worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, {});
+    await worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} });
     assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/publisher');
     assert.equal(globalThis.publisherRequest.headers.get('authorization'), 'Bearer fixture');
     assert.equal(globalThis.publisherRequest.method, 'POST');
-    await worker.scheduled({ cron: '*/15 * * * *' }, { CRON_SECRET: 'fixture' }, {});
+    await worker.scheduled({ cron: '*/15 * * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} });
     assert.equal(globalThis.publisherRequest.url, 'https://zibukecommunity.co.za/api/cron/billing');
-    await assert.rejects(worker.scheduled({ cron: 'unknown' }, { CRON_SECRET: 'fixture' }, {}), /Unknown cron/);
+    await assert.rejects(worker.scheduled({ cron: 'unknown' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} }), /Unknown cron/);
     globalThis.publisherStatus = 503;
-    await assert.rejects(worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, {}), /503/);
-    await assert.rejects(worker.scheduled({}, {}, {}), /not configured/);
+    await assert.rejects(worker.scheduled({ cron: '0 */4 * * *' }, { CRON_SECRET: 'fixture' }, { waitUntil() {} }), /503/);
+    await assert.rejects(worker.scheduled({}, {}, { waitUntil() {} }), /not configured/);
   } finally { delete globalThis.publisherRequest; delete globalThis.publisherStatus; }
 });

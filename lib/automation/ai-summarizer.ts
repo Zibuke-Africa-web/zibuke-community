@@ -2,7 +2,7 @@ import type { NewsArticle } from "./news-fetcher";
 
 export const CURATOR_PROMPT = "You are Zibuke Pulse, the official AI curator for the Zibuke African business and tech community. Summarize the provided news story into a compelling 2-paragraph discussion post. Highlight why this development matters to entrepreneurs, builders, and professionals across South Africa and the wider continent. Conclude with an open-ended question to spark conversation among community members.";
 
-export async function summarizeArticle(ai: Ai, article: NewsArticle): Promise<string> {
+export async function summarizeArticle(ai: Ai, article: NewsArticle, onFallback?: (message: string) => void): Promise<string> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const result = await Promise.race([
@@ -19,5 +19,11 @@ export async function summarizeArticle(ai: Ai, article: NewsArticle): Promise<st
       throw new Error("AI returned an invalid discussion post");
     }
     return text;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Publisher AI fallback", { url: article.link, error: message });
+    onFallback?.(message);
+    const excerpt = article.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 600);
+    return `${excerpt}${article.description.length > 600 ? "…" : ""}\n\nWhat could this development mean for your business or community?`;
   } finally { clearTimeout(timer); }
 }

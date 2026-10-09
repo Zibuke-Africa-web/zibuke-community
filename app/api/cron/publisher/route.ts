@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
 import { constantEqual } from "@/lib/payments";
-import { publishNews } from "@/lib/automation/publisher";
+import { publishNews, publisherDiagnostics } from "@/lib/automation/publisher";
 import { observeServiceRun } from "@/lib/service-runs";
 
 export const runtime = "nodejs";
@@ -9,20 +9,25 @@ export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
 
 async function run(request: Request) {
+  let result = publisherDiagnostics();
+  try {
   const { env } = await getCloudflareContext({ async: true });
   const secret = env.CRON_SECRET;
   const bearer = request.headers.get("authorization");
   const custom = request.headers.get("x-cron-secret");
-  if (!secret || !((bearer && constantEqual(bearer, `Bearer ${secret}`)) || (custom && constantEqual(custom, secret)))) {
-    return Response.json({ error: "Unauthorized" }, { status: 401, headers });
+  if (process.env.NODE_ENV !== "development" && (!secret || !((bearer && constantEqual(bearer, `Bearer ${secret}`)) || (custom && constantEqual(custom, secret))))) {
+    return Response.json({ ...result, errors: ["Unauthorized"] }, { status: 401, headers });
   }
-  try {
-    const result = await publishNews(env);
+    result = await publishNews(env);
     // Always refresh on successful retry, including after a previous request
     // persisted its posts but failed during cache invalidation.
-    for (const path of ["/", "/feed", "/spaces", "/spaces/welcome", "/spaces/general"]) revalidatePath(path);
-    return Response.json(result, { headers });
-  } catch { return Response.json({ error: "News publisher is unavailable" }, { status: 503, headers }); }
+    if (result.success || result.articlesSaved) for (const path of ["/", "/feed", "/spaces"]) revalidatePath(path, "layout");
+    return Response.json(result, { status: result.success ? 200 : 503, headers });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Publisher runner failed", message);
+    return Response.json({ ...result, success: false, errors: [...result.errors, message] }, { status: 503, headers });
+  }
 }
 
 export const GET = observeServiceRun("publisher", run);
