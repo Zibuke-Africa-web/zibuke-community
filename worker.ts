@@ -12,12 +12,12 @@ export default {
     // Invoke Next inside its normal request context so D1 bindings and cache
     // invalidation work. No public HTTP round trip or external scheduler needed.
     const task = (async () => {
-    const response = await handler.fetch(new Request(`https://zibukecommunity.co.za/api/cron/${route}`, {
-      method: "POST", headers: { authorization: `Bearer ${env.CRON_SECRET}` },
-    }), env, ctx);
-    const diagnostics = await response.text();
-    console.log("Scheduled publisher/billing result", { route, status: response.status, diagnostics });
-    if (!response.ok) throw new Error(`${route} failed (${response.status}): ${diagnostics}`);
+      const response = await handler.fetch(new Request(`https://zibukecommunity.co.za/api/cron/${route}`, {
+        method: "POST", headers: { authorization: `Bearer ${env.CRON_SECRET}` },
+      }), env, ctx);
+      const diagnostics = await response.text();
+      console.log("Scheduled publisher/billing result", { route, status: response.status, diagnostics });
+      if (!response.ok) throw new Error(`${route} failed (${response.status}): ${diagnostics}`);
     })();
     ctx.waitUntil(task);
     await task;

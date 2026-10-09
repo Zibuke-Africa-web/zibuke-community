@@ -25,6 +25,28 @@ test('RSS parser tolerates malformed XML, entities and incomplete items', () => 
   assert.equal(canonicalArticleUrl('https://www.example.com/story?b=2&utm_campaign=x&a=1#top'), 'https://example.com/story?a=1&b=2');
 });
 
+test('Atom alternate links and dates are parsed', () => {
+  const articles = parseFeed(`<feed><entry><title>Atom story</title>
+    <link rel="self" href="https://example.com/feed"/><link rel="alternate" href="https://example.com/story"/>
+    <updated>2026-10-09T10:00:00Z</updated><summary>A useful business update.</summary></entry></feed>`);
+  assert.equal(articles.length, 1);
+  assert.equal(articles[0].link, 'https://example.com/story');
+});
+
+test('AI timeout produces an excerpt and reports the timeout', async () => {
+  const source = readFileSync(new URL('../lib/automation/ai-summarizer.ts', import.meta.url), 'utf8');
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { summarizeArticle } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+  const timer = globalThis.setTimeout;
+  const errors = [];
+  try {
+    globalThis.setTimeout = callback => timer(callback, 1);
+    const summary = await summarizeArticle({ run: () => new Promise(() => {}) }, parseFeed(item('timeout'))[0], message => errors.push(message));
+    assert.match(summary, /A technology development/);
+    assert.deepEqual(errors, ['AI timed out']);
+  } finally { globalThis.setTimeout = timer; }
+});
+
 test('native Workers publisher authorization, transactional D1 deduplication and failures', { timeout: 120000 }, async t => {
   const bundle = await build({
     stdin: { contents: `

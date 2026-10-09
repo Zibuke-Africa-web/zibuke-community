@@ -9,11 +9,11 @@ The five curated feeds are fetched independently, with a 15-second timeout and
 The publisher selects at most two newest unseen articles per invocation. Invalid
 or incomplete RSS items are skipped. Only HTTPS article links on the respective
 source's domain are accepted. Summaries use the supplied RSS excerpt, not the full
-article. AI output is validated; failures leave the article eligible for retry.
+article. AI output is validated and bounded by a 45-second timeout. Failures publish a clean RSS excerpt and a discussion question, and are included in diagnostics.
 
 The system author is `pulse@zibukecommunity.co.za`. An existing non-system account
 with that email is never elevated. Posts target a public, free `general` space,
-falling back to the seeded `welcome` space (General / Welcome). Public feed queries
+falling back to the seeded `welcome` space, then any public free space, then creating General if its slug is available. Restricted spaces are never made public. Public feed queries
 already include these posts. Path invalidation refreshes the home and space feeds.
 
 Migration `0010_published_articles.sql` adds a durable source URL receipt. A D1
@@ -34,11 +34,26 @@ also skipped. Treat the receipt table as permanent publication history.
    real posts and consume Workers AI capacity. GET and POST accept either
    `Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`.
 
-Success returns `{ "success": true, "articlesIngested": 2, "postIds": ["…", "…"] }`.
-An all-duplicate run returns zero. Invalid authorization returns 401. If all feeds
-fail or all attempted summaries fail, the endpoint returns 503. Individual article
-failures are logged without content or credentials; partial success returns the
-published IDs. Cloudflare's next scheduled run retries unpublished articles.
+The response includes `success`, `feedsChecked` (URL, item count, error),
+`itemsFound`, `articlesAttempted`, `articlesSaved`, `errors`, and the
+backwards-compatible `articlesIngested` / `postIds` fields. An all-duplicate
+run succeeds with zero saves. Unusable feeds or fatal database failures return
+503 with diagnostics. A missing receipt table explicitly names migration 0010;
+the publisher never bypasses durable deduplication. AI fallback can produce a
+successful result with warnings in `errors`.
 
-Verification uses mocked RSS and AI responses with a real local workerd D1 database;
-it does not call paid inference or publish to production.
+GET and POST bypass the secret only when NODE_ENV is development. Production
+always requires authentication. The scheduled handler registers its invocation
+with waitUntil and logs the route status and diagnostic response.
+
+## Verification
+
+- `node --test tests/publisher.test.mjs`: isolated workerd D1 regression tests.
+- `node scripts/test-publisher-direct.mjs`: real live RSS fetches and publisher
+  functions in workerd with a fresh local D1 database, verifying public posts and
+  receipts. AI deliberately fails to exercise the excerpt fallback without paid inference.
+- Add `--fixtures` to the direct script for offline RSS fixtures.
+- `npx tsc --noEmit` and `npm run lint`.
+
+These scripts do not publish to production. Deploy the rebuilt Worker for fixes
+to affect scheduled production runs.

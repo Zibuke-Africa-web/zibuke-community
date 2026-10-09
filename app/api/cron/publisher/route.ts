@@ -11,13 +11,13 @@ const headers = { "Cache-Control": "no-store" };
 async function run(request: Request) {
   let result = publisherDiagnostics();
   try {
-  const { env } = await getCloudflareContext({ async: true });
-  const secret = env.CRON_SECRET;
-  const bearer = request.headers.get("authorization");
-  const custom = request.headers.get("x-cron-secret");
-  if (process.env.NODE_ENV !== "development" && (!secret || !((bearer && constantEqual(bearer, `Bearer ${secret}`)) || (custom && constantEqual(custom, secret))))) {
-    return Response.json({ ...result, errors: ["Unauthorized"] }, { status: 401, headers });
-  }
+    const { env } = await getCloudflareContext({ async: true });
+    const secret = env.CRON_SECRET;
+    const bearer = request.headers.get("authorization");
+    const custom = request.headers.get("x-cron-secret");
+    if (process.env.NODE_ENV !== "development" && (!secret || !((bearer && constantEqual(bearer, `Bearer ${secret}`)) || (custom && constantEqual(custom, secret))))) {
+      return Response.json({ ...result, errors: ["Unauthorized"] }, { status: 401, headers });
+    }
     result = await publishNews(env);
     // Always refresh on successful retry, including after a previous request
     // persisted its posts but failed during cache invalidation.
